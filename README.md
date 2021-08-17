@@ -1,7 +1,9 @@
 # wmf-lab
 Script to create a topology file for [containerlab](https://containerlab.srlinux.dev/) to simulate the WMF network.
 
-The script use WMF Netbox, and homer public repo YAML files, to collect information on devices running on the network and create the topology to initiate a containerlab simulation, using Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.
+The script use WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.
+
+As crpd is a lightweight container it is possible to run multiple nodes on even the most modest hardware.
 
 ### Approach 
 
@@ -11,7 +13,7 @@ Juniper's crpd is basically just their routing-stack software (i.e. OSPF, BGP, I
 
 ##### Interface Addressing
 
-Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For most of the supported containerized network nodes it supports this is not an issue - as the nodes themselves allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd, however.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to configure OSPF, BGP etc. which will operate over those interfaces.
+Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For most of the containerized network nodes it supports this is not an issue - most allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd, however.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to configure OSPF, BGP etc. which will operate over those interfaces.
 
 To overcome this the "start" shell script uses the Linux [ip](https://manpages.debian.org/unstable/iproute2/ip.8.en.html) command to add interface IPs as required once the containers have been created by clab.
 
@@ -22,15 +24,15 @@ Real Juniper devices operated by WMF use standard JunOS interface naming such as
 
 ##### Modelling switches
 
-WMF routers commonly have connections to switches, typically with multiple 802.1q sub-interfaces on each link connecting to a different Vlan on the switch.  Many of these are configured as OSPF 'passive' interfaces, or have BGP configured on them to servers (such as load-balancers).
+WMF routers commonly have connections to layer-2 switches, typically with multiple 802.1q sub-interfaces on each link connecting to a different Vlan on the switch.  Many of these are configured as OSPF 'passive' interfaces, or have BGP configured on them to servers (such as load-balancers).
 
-Currently the lab deploys a containerlab node of the [bridge](https://containerlab.srlinux.dev/manual/kinds/bridge/) kind to represent required L2 devices.  A standard (rather than Vlan-aware) bridge is created, but this still allows for Vlan tags to work which are then filtered by each container as frames are received (this works fine, minus the full isolation of frames through the bridge).  Clab devices of kind bridge need to have an actual bridge device created in the default Linux network namespace of the device running the lab in advance of deployment to work.  The start script creates these in advance to ensure things work, the stop script removes them.
+Currently the lab deploys a containerlab node of the [bridge](https://containerlab.srlinux.dev/manual/kinds/bridge/) kind to represent required L2 devices.  A standard (rather than Vlan-aware) bridge is created, but this still allows Vlan tags to be used, which get filtered by each container as frames are received and delivered to the correct sub-interfaces (this works fine, minus the full isolation of frames through the bridge).  Clab devices of kind bridge need to have an actual bridge device created in the default Linux network namespace of the device running the lab in advance of deployment to work.  The start script creates these in advance to ensure things work, the stop script removes them.
 
-Sub-interfaces on ports connecting to these simulated switches are also created by the start script, as containerlab does not provide a mechanism to add these itself.  Again the addresses required for each are added by the start script during deploy.
+Sub-interfaces on ports connecting to these simulated switches, within the crpd containers, are also created by the start script.  Containerlab does not provide a mechanism to add these itself.  Again the addresses required for each are added by the start script during deploy.
 
 ##### Currently support containerlab version
 
-Containerlab version 15+ introduce changes that cause a race condition for the Vlan sub-interfaces the start script generates (starting crpd before they exist).  For now it is advised to run with a modified version 14, which can be installed as follows:
+Containerlab versions 15+ introduce changes that cause a race condition for the Vlan sub-interfaces the start script generates (starting crpd before they exist).  For now it is advised to run with a modified version 14, which can be installed as follows:
 ```
 sudo bash -c "$(curl -sL https://get-clab.srlinux.dev)" -- -v 0.0.0-crpd-fix
 ```
@@ -48,9 +50,9 @@ sudo pip3 install pynetbox
 
 Clone this repo as follows:
 ```
-https://github.com/topranks/wmf-lab.git
+git clone --depth 1 https://github.com/topranks/wmf-lab.git
 ```
-You can then change to the 'wmf-lab' directory and run the "gen_topo.py" script, it will ask for an API key to connect to the WMF Netbox server when you run it:
+You can then change to the 'wmf-lab' directory and run the "gen_topo.py" script, it will ask for an API key to connect to the WMF Netbox server and begin building the topology:
 ```
 cmooney@wikilap:~/wmf-lab$ ./gen_topo.py 
 Netbox API Key: 
@@ -80,8 +82,18 @@ Writing start_wmf-lab.sh...
 Writing stop_wmf-lab.sh...
 ```
 
+NOTE:  The lab takes a few minutes to generate, due to slow Netbox API and poor coding quality ;)
+
 When complete you should find a new sub-folder has been created, called "output", containing the start and stop scripts, the containerlab topology file, and the base JunOS configuration files for each crpd container:
 ```
+cmooney@wikilap:~/wmf-lab$ ls -lah output/
+total 84K
+drwxrwxr-x 3 cmooney cmooney 4.0K Aug 17 16:49 .
+drwxrwxr-x 5 cmooney cmooney 4.0K Aug 17 16:49 ..
+drwxrwxr-x 3 cmooney cmooney 4.0K Aug 17 16:49 configs
+-rwxr-xr-x 1 cmooney cmooney  57K Aug 17 16:49 start_wmf-lab.sh
+-rwxr-xr-x 1 cmooney cmooney  948 Aug 17 16:49 stop_wmf-lab.sh
+-rw-rw-r-- 1 cmooney cmooney 6.2K Aug 17 16:49 wmf-lab.yaml
 ```
 
 ### Running the lab
