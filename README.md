@@ -82,7 +82,7 @@ Writing start_wmf-lab.sh...
 Writing stop_wmf-lab.sh...
 ```
 
-NOTE:  The lab takes a few minutes to generate, due to slow Netbox API and poor coding quality ;)
+NOTE:  The lab takes a few minutes to generate, due to slow Netbox API and my shitty code ;)
 
 When complete you should find a new sub-folder has been created, called "output", containing the start and stop scripts, the containerlab topology file, and the base JunOS configuration files for each crpd container:
 ```
