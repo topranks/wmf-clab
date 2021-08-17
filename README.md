@@ -109,7 +109,13 @@ sudo apt install docker-ce
 sudo bash -c "$(curl -sL https://get-clab.srlinux.dev)" -- -v 0.0.0-crpd-fix
 ```
 
-A valid crpd container image from Juniper also needs to be present on the local system to run.  This is available from Juniper, or contact the author if a WMF staff member.
+A valid crpd container image from Juniper also needs to be present on the local system for docker to run (i.e. it should show with "docker images").  This is available from Juniper, or contact the author if a WMF staff member.  The docker image should be named crpd/latest, you can use [docker tag](https://docs.docker.com/engine/reference/commandline/tag/) to alias the Juniper provided image to that name.
+
+```
+cathal@officepc:~$ sudo docker images | grep crpd 
+crpd                           latest        5b6acdd96efb   20 months ago   320MB
+hub.juniper.net/routing/crpd   19.4R1.10     5b6acdd96efb   20 months ago   320MB
+```
 
 #### Start script
 
