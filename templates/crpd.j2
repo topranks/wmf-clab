@@ -1,0 +1,31 @@
+system {
+    root-authentication {
+        encrypted-password "$6$lB5c6$Zeud8c6IhCTE6hnZxXBl3ZMZTC2hOx9pxxYUWTHKW1oC32SATWLMH2EXarxWS5k685qMggUfFur1lq.o4p4cg1"; ## SECRET-DATA
+    }
+}
+protocols {
+    ospf {
+        area 0.0.0.0 {
+{% for int_conf in config.phys_ints.values() %}
+  {% if (int_conf.metric | default(10)) > 0 %} {# will skip any set to -1 like pfw links #}
+            interface {{ int_conf.clab_dev }} {
+                interface-type p2p;
+                link-protection;
+                metric {{ int_conf.metric | default(10) }};
+            }
+  {% endif -%}
+{% endfor %}
+{% for int_conf in config.subints.values() %}
+  {% if (int_conf.metric | default(2)) > 0 %}
+            interface {{ int_conf.clab_dev }}.{{ int_conf.vlan_id}} {
+                metric {{ int_conf.metric | default(2) }};
+                passive;
+            }
+  {% endif -%}
+{% endfor %}
+            interface lo.0 {
+                passive;
+            }
+        }
+    }
+}
