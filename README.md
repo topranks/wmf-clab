@@ -1385,4 +1385,71 @@ root@officepc:/home/cathal# ip link show eth2
     alias xe-5/0/1
 ```
 
+### Stopping the lab
+  
+Run the stop script top stop the lab and clean up the bridge interfaces
+```
+sudo ./stop_wmf-lab.sh
+```
 
+<details>
+  <summary>Example output - click to expand</summary>
+  
+```  
+cathal@officepc:~/containerlab/wmf-lab$ sudo ./stop_wmf-lab.sh 
+[sudo] password for cathal: 
++ sudo clab destroy -t wmf-lab.yaml
+INFO[0000] Parsing & checking topology file: wmf-lab.yaml 
+INFO[0000] Destroying lab: wmf-lab                      
+INFO[0001] Removed container: clab-wmf-lab-mr1-eqsin    
+INFO[0001] Removed container: clab-wmf-lab-pfw3a-eqiad  
+INFO[0001] Removed container: clab-wmf-lab-cr4-ulsfo    
+INFO[0001] Removed container: clab-wmf-lab-cr3-knams    
+INFO[0001] Removed container: clab-wmf-lab-cr2-eqord    
+INFO[0001] Removed container: clab-wmf-lab-cr2-eqdfw    
+INFO[0002] Removed container: clab-wmf-lab-mr1-codfw    
+INFO[0002] Removed container: clab-wmf-lab-mr1-ulsfo    
+INFO[0002] Removed container: clab-wmf-lab-mr1-esams    
+INFO[0002] Removed container: clab-wmf-lab-mr1-eqiad    
+INFO[0002] Removed container: clab-wmf-lab-pfw3b-codfw  
+INFO[0002] Removed container: clab-wmf-lab-cr2-codfw    
+INFO[0002] Removed container: clab-wmf-lab-cr2-esams    
+INFO[0002] Removed container: clab-wmf-lab-cr2-eqiad    
+INFO[0003] Removed container: clab-wmf-lab-pfw3b-eqiad  
+INFO[0003] Removed container: clab-wmf-lab-cr3-eqsin    
+INFO[0003] Removed container: clab-wmf-lab-cr3-ulsfo    
+INFO[0003] Removed container: clab-wmf-lab-pfw3a-codfw  
+INFO[0003] Removed container: clab-wmf-lab-cr1-eqiad    
+INFO[0003] Removed container: clab-wmf-lab-cr3-esams    
+INFO[0003] Removed container: clab-wmf-lab-cr2-eqsin    
+INFO[0003] Removed container: clab-wmf-lab-cr1-codfw    
+INFO[0003] Removing container entries from /etc/hosts file 
+INFO[0003] Deleting network 'clab'...                   
++ sudo ip link set dev asw-a-codfw down
++ sudo brctl delbr asw-a-codfw
++ sudo ip link set dev asw-b-codfw down
++ sudo brctl delbr asw-b-codfw
++ sudo ip link set dev asw-c-codfw down
++ sudo brctl delbr asw-c-codfw
++ sudo ip link set dev asw-d-codfw down
++ sudo brctl delbr asw-d-codfw
++ sudo ip link set dev csw1-c8-eqiad down
++ sudo brctl delbr csw1-c8-eqiad
++ sudo ip link set dev asw2-a-eqiad down
++ sudo brctl delbr asw2-a-eqiad
++ sudo ip link set dev asw2-b-eqiad down
++ sudo brctl delbr asw2-b-eqiad
++ sudo ip link set dev asw2-c-eqiad down
++ sudo brctl delbr asw2-c-eqiad
++ sudo ip link set dev asw2-d-eqiad down
++ sudo brctl delbr asw2-d-eqiad
++ sudo ip link set dev csw1-d5-eqiad down
++ sudo brctl delbr csw1-d5-eqiad
++ sudo ip link set dev asw1-eqsin down
++ sudo brctl delbr asw1-eqsin
++ sudo ip link set dev asw2-esams down
++ sudo brctl delbr asw2-esams
++ sudo ip link set dev asw2-ulsfo down
++ sudo brctl delbr asw2-ulsfo
+```
+</details>   
