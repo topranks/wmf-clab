@@ -1385,13 +1385,15 @@ eth11@if251      UP
 lo               UNKNOWN        127.0.0.1/8 208.80.153.192/32 2620:0:860:ffff::1/128 ::1/128 
 lsi              UNKNOWN        fe80::c8aa:92ff:fe5b:c9e5/64 
 ```
-                                                                    
+
+### Showing real-world equivalent interface names  
+  
 The equivalent real-world interface (configured as alias) is visible if you run "ip link show":
 ```
-root@officepc:/home/cathal# ip link show eth2
-147: eth2@if148: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65000 qdisc noqueue state UP mode DEFAULT group default 
-    link/ether aa:c1:ab:c9:7d:c8 brd ff:ff:ff:ff:ff:ff link-netns clab-wmf-lab-cr4-ulsfo
-    alias xe-5/0/1
+root@cr1-codfw:~# ip link show dev eth3
+124: eth3@if123: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65000 qdisc noqueue state UP mode DEFAULT group default 
+    link/ether aa:c1:ab:23:da:b5 brd ff:ff:ff:ff:ff:ff link-netnsid 7
+    alias xe-5/1/1
 ```
 
 ### Stopping the lab
