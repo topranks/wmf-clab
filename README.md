@@ -2,7 +2,7 @@
 
 ![wmf-lab topology](https://github.com/topranks/wmf-lab/blob/main/clab_wmf-lab.png)
 
-Script to create a topology file for [containerlab](https://containerlab.srlinux.dev/) to simulate the WMF network.
+Script to create a topology file for [containerlab](https://containerlab.srlinux.dev/) to simulate the WMF network (see this [presentation](https://www.youtube.com/watch?v=n81Tc1g4W5U) for an intro.)
 
 The script use WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.
 
