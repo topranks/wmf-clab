@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import pynetbox
+
 from jnpr.junos import Device
 from jnpr.junos.utils.config import Config
 from jnpr.junos.exception import ConnectError
@@ -19,6 +21,7 @@ warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-s', '--sshconfig', help='SSH config file', default='~/.ssh/config')
+parser.add_argument('-c', '--conffile', help='Path to JSON-formatted JunOS config gile', default='lvs_config.json')
 args = parser.parse_args()
 
 def main():
@@ -26,7 +29,7 @@ def main():
         JunOS configuration file in JSON format.  Pushes that config to any containerlab 
         devices defined in local file 'wmf-lab.yaml' with name starting 'lvs' """
 
-    with open('crpd_lvs_config.json', 'r') as json_config:
+    with open(args.conffile, 'r') as json_config:
         lvs_config = json.loads(json_config.read())
 
     with open('wmf-lab.yaml', 'r') as wmf_file:
