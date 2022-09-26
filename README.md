@@ -75,25 +75,25 @@ The clab binary and start script need to be run as root to create containers and
 
 Python3, [Pynetbox](https://github.com/netbox-community/pynetbox), Juniper's [PyEz library](https://www.juniper.net/documentation/us/en/software/junos-pyez/junos-pyez-developer/topics/concept/junos-pyez-overview.html), WMF's [Homer](https://doc.wikimedia.org/homer/master/introduction.html#homer-configuration-manager-for-network-devices) and [Docker](https://www.docker.com/) are required to generate the topology and run the lab. 
 
-First install pip:
+1. First install pip:
 ```
 sudo apt install python3-pip
 ```
 
-Then the Python components:
+2. Then the Python components:
 ```
 pip3 install pynetbox junos-eznc homer
 ```
 
-Next install docker following their [instructions](https://docs.docker.com/engine/install/debian/).
+3. Next install docker following their [instructions](https://docs.docker.com/engine/install/debian/).
 
-Once installed we should import the crpd container image.  Copy the tar.gz file over to the system with scp or similar, then add it to the docker system:
+4. Once installed we should import the crpd container image.  Copy the tar.gz file over to the system with scp or similar, then add it to docker:
 
 ```
 docker load -i junos-routing-crpd-docker-19.4R1.10.tgz
 ```
 
-To verify it loaded run "docker images", and take note of the 'image id' that's been assigned to the new image
+To verify it loaded run "docker images", and take note of the 'image id' it's been assigned:
 ```
 root@debiantest:/home/debian# docker images
 REPOSITORY                     TAG         IMAGE ID       CREATED       SIZE
@@ -105,7 +105,7 @@ Then tag it as 'crpd:latest' (the name the containerlab topolofy file will look 
 docker tag 5b6acdd96efb crpd:latest
 ```
 
-We also want to install a debain container image from docker hub which will be used to simulate L2 switches
+5. We also want to install a debain container image from docker hub which will be used to simulate L2 switches
 ```
 root@debiantest:~# docker pull debian
 Using default tag: latest
@@ -125,7 +125,7 @@ crpd                           latest      5b6acdd96efb   2 years ago   320MB
 hub.juniper.net/routing/crpd   19.4R1.10   5b6acdd96efb   2 years ago   320MB
 ```
 
-Finally we add the containerlab repo to our system and install it:
+6. Finally we add the containerlab repo to our system and install it:
 ```
 echo "deb [trusted=yes] https://apt.fury.io/netdevops/ /" | \
 sudo tee -a /etc/apt/sources.list.d/netdevops.list
