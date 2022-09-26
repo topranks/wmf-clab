@@ -26,7 +26,7 @@ At a high level the approach to building the lab is as follows:
     3. Write a startup bash script which will:
         1. Initialise the lab with the clab command, creating containers and links
         2. Add IP addresses to the newly created container interfaces
-        3. Add additional interfaces (bridges, 802.1q sub-interfaces) to containers as needed
+        3. Add virtual interfaces (bridges, 802.1q sub-interfaces) to containers as needed
         4. Set the correct allowed Vlans on interfaces terminating on bridge devices (simulating L2 switches)
         5. Add entries to /etc/hosts to point device FQDN hostnames at local clab management IPs
     4. Clone the [homer public repo](https://github.com/wikimedia/operations-homer-public) and apply the following modifications
@@ -81,7 +81,7 @@ Then the Python components:
 pip3 install pynetbox junos-eznc homer
 ```
 
-Next [intall docker](https://docs.docker.com/engine/install/debian/) following the instructions.
+Next [intall docker](https://docs.docker.com/engine/install/debian/) following their instructions.
 
 Finally we can add the containerlab repo to our system and install it:
 ```
