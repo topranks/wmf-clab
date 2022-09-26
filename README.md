@@ -10,15 +10,15 @@ As crpd is a lightweight container it requires significantly less resources than
 
 Two additional scripts are included, one which can run on a device with keys that can connect to produciton routers, and gathers config and operational state from the live network, dumping it to JSON files.  The other companion script can be used to push this config to the containerlab instances, filling in the gaps for elements that are confgiured manually in the current infra.  Some other basic tooling is included to gather LVS service IPs from production so they can be announced to the simulated network elements.
 
-### Approach 
+## Approach 
 
-#### Juniper cRPD - Containerised Routing Protocol Daemon
+### Juniper cRPD - Containerised Routing Protocol Daemon
 
 Juniper's crpd is basically just their routing-stack software (i.e. OSPF, BGP, IS-IS implementation) deployed in a container.  Unlike virtual-machine based platforms such as [vMX](https://www.juniper.net/us/en/products/routers/mx-series/vmx-virtual-router-software.html), it does not implement any dataplane funcationality.  Instead it runs the various protocols and builds the per-protocol and global RIB, and then uses the normal Linux [netlink](https://en.wikipedia.org/wiki/Netlink) interface to program routes into the Linux network namespace of the crpd container.  
 
 This means that, while the OSPF, BGP and other protocol implemenations should operate exactly as on a real Juniper router, packet encapsulation and forwarding is being performed by Linux.  As such crpd is only 100% valid to test some things (such as changes to OSPF metrics) but not others (like how MPLS label stacks or Vlan tags are added to packets).
 
-#### Lab Overview
+### Lab Overview
 
 At a high level the approach to building the lab is as follows:
 
@@ -45,19 +45,19 @@ At a high level the approach to building the lab is as follows:
 6. Run the ```junos_push_saved_data.py``` script to disable BGP groups not needed, and add additional config from production devices saved in step 2.1.
 
 
-### Integration with containerlab
+## Integration with containerlab
 
-#### Interface Addressing
+### Interface Addressing
 
 Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For most of the containerized network nodes it supports this is not an issue - most allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd, however.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to enable OSPF, BGP etc. which will run over those interfaces.
 
 To overcome this the "start" shell script uses the Linux [ip](https://manpages.debian.org/bullseye/iproute2/ip-route.8.en.html) command to add interface IPs as required once the containers have been created by clab.
 
-#### Interface Naming
+### Interface Naming
 
 Real Juniper devices operated by WMF use standard JunOS interface naming such as 'ge-0/0/0', 'et-5/0/1' etc.  Linux does not, unfortunately, allow a forward slash in a network device name, so we cannot give the crpd interfaces exactly matching those on production routers.  So in the lab interfaces are named with underscores replacing forward slashes.
 
-#### Modelling switches
+### Modelling switches
 
 WMF routers commonly have connections to layer-2 switches, typically with multiple 802.1q sub-interfaces on each link connecting to a different Vlan on the switch.  Many of these are configured as OSPF 'passive' interfaces, or have BGP configured on them to servers (such as load-balancers).
 
@@ -65,13 +65,13 @@ To model L2 switches containerlab nodes are added of kind 'linux', set to run a 
 
 Sub-interfaces on ports connecting to these bridges, within the crpd containers, are also created by the start script.  Containerlab does not provide a mechanism to add these itself.  The addresses for these sub-ints are added by the start script during deploy.
 
-### Running the script to generate topology / config files.
+## Running the script to generate topology / config files.
 
 Most typically I run the lab in a Debian VM on my system, to keep it all isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow each container to run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
 
 The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to execute all the below from a root shell to keep things simple.
 
-#### Dependencies
+### Dependencies
 
 Python3, [Pynetbox](https://github.com/netbox-community/pynetbox), Juniper's [PyEz library](https://www.juniper.net/documentation/us/en/software/junos-pyez/junos-pyez-developer/topics/concept/junos-pyez-overview.html), WMF's [Homer](https://doc.wikimedia.org/homer/master/introduction.html#homer-configuration-manager-for-network-devices) and [Docker](https://www.docker.com/) are required to generate the topology and run the lab. 
 
@@ -134,7 +134,7 @@ sudo apt update
 sudo apt install containerlab
 ```
 
-#### Generate an SSH keypair to allow passwordless ssh to the containers
+### Generate an SSH keypair to allow passwordless ssh to the containers
 
 The script will link ```~/.ssh/id_ed25519.pub``` to /root/.ssh/authorized_keys within the container images to allow SSH without password (required for Homer and the other scripts using the JunOS Netconf connection).  If you do not have an ED25519 keypair already generate one as follows:
 ```
@@ -147,7 +147,7 @@ Host *
     IdentityFile /root/.ssh/id_ed25519
 ```
 
-#### Clone this repo and run the script to generate the lab topology:
+### Clone this repo and run the script to generate the lab topology:
 
 Clone this repo as follows:
 ```
@@ -216,9 +216,9 @@ drwxrwxr-x 5 cmooney cmooney 4.0K Aug 17 16:49 ..
 
 The script also clones the Homer public repo into the current directory, and modifies / replaces some template files within it to make them compatible with crpd.
 
-### Running the lab
+## Running the lab
 
-#### Start script
+### Start script
 
 The start script needs to be run with root priviledges as it adds Linux netdevs to the various container namespaces and configures IP addresses:
 ```
@@ -2311,11 +2311,11 @@ ae1              Up    MPLS  enabled
 ```
 </details>                                                                                       
 
-#### Configure devices with Homer
+### Configure devices with Homer
 
 As devices are reachable on thier normal hostnames, and we have a local copy of the public and mock private Homer repos (with some modifcations to allow them work with crpd), we can run Homer to configure the containerized devices so they will match production.  
 
-##### Homer Configuration    
+#### Homer Configuration    
     
 Homer, and the netbox plugin, should be installed and configured as normal.  It is strongly advised to this the correct way, and not repeat the authors [idiotic steps](https://phabricator.wikimedia.org/P34916).
 
@@ -2327,7 +2327,7 @@ The file ```/etc/homer/config.yaml``` should be created as usual.  Important ele
     
 You may find [this example](https://phabricator.wikimedia.org/P34917) useful.
     
-##### Run Homer
+#### Run Homer
     
 Homer can be run for the simulated core routers as follows:
 ```
@@ -2346,7 +2346,7 @@ Address          Interface              State           ID               Pri  De
 185.15.58.146    xe-4_2_2.16            Full            185.15.58.129    128    31
 ```
     
-##### Add additional config to containerlab nodes saved from production
+#### Add additional config to containerlab nodes saved from production
     
 Assuming you have run the ```junos_get_live_conf.py``` script from a machine with production access, transfer the "junos_data" directory to the wmf-lab folder on the machine running the lab.  You can then run ```junos_push_saved_data.py``` to add this additional config to the lab devices.
     
