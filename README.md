@@ -2348,7 +2348,7 @@ Address          Interface              State           ID               Pri  De
     
 Assuming you have run the ```junos_get_live_conf.py``` script from a machine with production access, transfer the "junos_data" directory to the wmf-lab folder on the machine running the lab.  You can then run ```junos_push_saved_data.py``` to add this additional config to the lab devices.
     
-NOTE: There is a [bug](https://github.com/Juniper/py-junos-eznc/issues/1208) in how cRPD reports the JunOS version in use, which prevents retrieving cRPD configs in JSON format using PyEz, which tries to verify the version is recent enough to support this.  If you hit this you may see this error message:
+NOTE: There is a [bug](https://github.com/Juniper/py-junos-eznc/issues/1208) in how cRPD reports the JunOS version its running.  This prevents retrieving cRPD configs in JSON format using PyEz, as the library tries and fails to verify the JunOS version is recent enough.  If you hit this problem you will see the following error message:
 ```
 root@debiantest:~/wmf-lab# ./junos_push_saved_data.py 
 /usr/local/lib/python3.9/dist-packages/jnpr/junos/device.py:886: RuntimeWarning: Native JSON support is only from 14.2 onwards
