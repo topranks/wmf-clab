@@ -10,8 +10,6 @@ import sys
 
 import json
 
-import pickle
-
 parser = argparse.ArgumentParser(description='WMF Container Lab Topology Generator')
 parser.add_argument('--netbox', help='Netbox server IP / Hostname', type=str, default='netbox.wikimedia.org')
 parser.add_argument('-k', '--key', help='Netbox API Token / Key', type=str)
@@ -27,17 +25,9 @@ def main():
     nb_key = get_nb_key()
     nb = pynetbox.api(nb_url, token=nb_key, threading=True)
 
-#    devices = pickle.load(open("devices.p", "rb"))
-#    links = pickle.load(open("links.p", "rb"))
-
     get_info()
     prep_homer_repo()
-
     add_lvs_devices()
-
-    pickle.dump(devices, open("devices.p", "wb"))
-    pickle.dump(links, open("links.p", "wb"))
-
     write_files()
 
 
@@ -297,7 +287,6 @@ def write_files():
         print(link)
     '''
 
-    print()
     p = Path('output')
     p.mkdir(exist_ok=True)
     write_clab_topology()
@@ -486,15 +475,20 @@ def prep_homer_repo():
     os.system("rm -f operations-homer-public/templates/common/ospf.conf && cp templates/ospf.j2 operations-homer-public/templates/common/ospf.conf")
     # Replace routing-options with one that just covers aggregates, no RPKI etc.
     os.system("rm -f operations-homer-public/templates/cr/routing-options.conf && cp templates/routing-options.j2 operations-homer-public/templates/cr/routing-options.conf")
-
+    print()
 
 def clone_homer_repo():
+    print()
     if Path('operations-homer-public').is_dir():
         print("Deleting existing homer public repo directory...")
         os.system("rm -Rf operations-homer-public")
         
-    print("Cloning homer public repo to operations-homer-public...")
+    if Path('operations-homer-mock-private').is_dir():
+        print("Deleting existing homer mock private repo directory...")
+        os.system("rm -Rf operations-homer-mock-private")
+
     os.system("git clone --depth 1 https://github.com/wikimedia/operations-homer-public")
+    os.system("git clone --depth 1 https://github.com/wikimedia/operations-homer-mock-private")
 
 
 def remove_capirca_key(filename):
