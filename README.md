@@ -34,7 +34,7 @@ At a high level the approach to building the lab is as follows:
     4. Clone the [homer public repo](https://github.com/wikimedia/operations-homer-public) and apply the following modifications
         1. Remove Capirca keys from device and role YAML files (cRPD does not support JunOS firewall conf)
         2. Remove prefix lists which use 'apply-groups' for elements cRPD cannot model (system-ntp list etc)
-        3. Replace certain top-level Jinja2 templates (such as 'cr.conf') with versions from this repo which only include config sections cRPD supports.
+        3. Replace certain top-level Jinja2 templates (such as 'cr.conf') with versions which only include config sections cRPD supports.
 2. Gather additional data not available in Netbox/Homer repo
     1. Run the ```junos_get_live_conf.py``` script on a device which has access to production routers, and transfer the JSON files it saves to the 'wmf-lab' directory on the machine running the lab.
     2. Save LVS service IPs using the script/instructions in the ```lvs_getvips``` directory of this repo
