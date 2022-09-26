@@ -2315,7 +2315,7 @@ As devices are reachable on thier normal hostnames, and we have a local copy of 
 
 #### Homer Configuration    
     
-Homer, and the netbox plugin, should be installed and configured as normal.  It is strongly advised to this the correct way, and not repeat the authors [idiotic steps](https://phabricator.wikimedia.org/P34916).
+Homer, and the netbox plugin, should be installed and configured as normal.  It is strongly advised to this the correct way, and avoid [doing this](https://phabricator.wikimedia.org/P34916).
 
 The file ```/etc/homer/config.yaml``` should be created as usual.  Important elements that are required here are:
     
