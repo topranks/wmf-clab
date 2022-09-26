@@ -32,7 +32,7 @@ At a high level the approach to building the lab is as follows:
     4. Clone the [homer public repo](https://github.com/wikimedia/operations-homer-public) and apply the following modifications
         1. Remove Capirca keys from device and role YAML files (cRPD does not support JunOS firewall conf)
         2. Remove prefix lists which use 'apply-groups' for elements cRPD cannot model (system-ntp list etc)
-        3. Replace certain top-level Jinja2 templates (such as 'cr.conf') with versions from this repo which only include config sections cRPD supports, or (in the case of OSPF) rewrite interface names to match the crpd ones.
+        3. Replace certain top-level Jinja2 templates (such as 'cr.conf') with versions from this repo which only include config sections cRPD supports.
 2. Gather additional data not available in Netbox/Homer repo
     1. Run the ```junos_get_live_conf.py``` script on a device which has access to production routers, and transfer the JSON files it saves to the 'wmf-lab' directory on the machine running the lab.
     2. Save LVS service IPs using the script/instructions in the ```lvs_getvips``` directory of this repo
@@ -2032,66 +2032,100 @@ root@debiantest:~/wmf-lab/output#
   
 Once started you can see the status of the containers as follows:
 ```
-cathal@officepc:~$ sudo clab inspect -n wmf-lab
-+----+--------------------------+--------------+-------+------+-------+---------+-----------------+-----------------------+
-| #  |           Name           | Container ID | Image | Kind | Group |  State  |  IPv4 Address   |     IPv6 Address      |
-+----+--------------------------+--------------+-------+------+-------+---------+-----------------+-----------------------+
-|  1 | clab-wmf-lab-cr1-codfw   | e0f6e17e94b1 | crpd  | crpd |       | running | 172.20.20.23/24 | 2001:172:20:20::17/64 |
-|  2 | clab-wmf-lab-cr1-eqiad   | 6ccc3035ec33 | crpd  | crpd |       | running | 172.20.20.17/24 | 2001:172:20:20::11/64 |
-|  3 | clab-wmf-lab-cr2-codfw   | 672752fd39c7 | crpd  | crpd |       | running | 172.20.20.19/24 | 2001:172:20:20::13/64 |
-|  4 | clab-wmf-lab-cr2-eqdfw   | 14ecf8ee88fb | crpd  | crpd |       | running | 172.20.20.9/24  | 2001:172:20:20::9/64  |
-|  5 | clab-wmf-lab-cr2-eqiad   | 375a31889191 | crpd  | crpd |       | running | 172.20.20.16/24 | 2001:172:20:20::10/64 |
-|  6 | clab-wmf-lab-cr2-eqord   | 2012cf1cb3ef | crpd  | crpd |       | running | 172.20.20.6/24  | 2001:172:20:20::6/64  |
-|  7 | clab-wmf-lab-cr2-eqsin   | 485b7c312651 | crpd  | crpd |       | running | 172.20.20.13/24 | 2001:172:20:20::d/64  |
-|  8 | clab-wmf-lab-cr2-esams   | 6403b602e21d | crpd  | crpd |       | running | 172.20.20.20/24 | 2001:172:20:20::14/64 |
-|  9 | clab-wmf-lab-cr3-eqsin   | a7873effae9f | crpd  | crpd |       | running | 172.20.20.10/24 | 2001:172:20:20::a/64  |
-| 10 | clab-wmf-lab-cr3-esams   | e5be79173dc8 | crpd  | crpd |       | running | 172.20.20.12/24 | 2001:172:20:20::c/64  |
-| 11 | clab-wmf-lab-cr3-knams   | 49dd8732dc13 | crpd  | crpd |       | running | 172.20.20.8/24  | 2001:172:20:20::8/64  |
-| 12 | clab-wmf-lab-cr3-ulsfo   | f6c24e23fefd | crpd  | crpd |       | running | 172.20.20.22/24 | 2001:172:20:20::16/64 |
-| 13 | clab-wmf-lab-cr4-ulsfo   | e70800e8553d | crpd  | crpd |       | running | 172.20.20.7/24  | 2001:172:20:20::7/64  |
-| 14 | clab-wmf-lab-mr1-codfw   | c397137e6c44 | crpd  | crpd |       | running | 172.20.20.4/24  | 2001:172:20:20::4/64  |
-| 15 | clab-wmf-lab-mr1-eqiad   | e5efbf59c922 | crpd  | crpd |       | running | 172.20.20.21/24 | 2001:172:20:20::15/64 |
-| 16 | clab-wmf-lab-mr1-eqsin   | 1b5c2dc1bee9 | crpd  | crpd |       | running | 172.20.20.5/24  | 2001:172:20:20::5/64  |
-| 17 | clab-wmf-lab-mr1-esams   | 28298c7fe98e | crpd  | crpd |       | running | 172.20.20.2/24  | 2001:172:20:20::2/64  |
-| 18 | clab-wmf-lab-mr1-ulsfo   | 62e46e1ee957 | crpd  | crpd |       | running | 172.20.20.14/24 | 2001:172:20:20::e/64  |
-| 19 | clab-wmf-lab-pfw3a-codfw | baec9dfb9755 | crpd  | crpd |       | running | 172.20.20.3/24  | 2001:172:20:20::3/64  |
-| 20 | clab-wmf-lab-pfw3a-eqiad | d0308e403250 | crpd  | crpd |       | running | 172.20.20.18/24 | 2001:172:20:20::12/64 |
-| 21 | clab-wmf-lab-pfw3b-codfw | 213915c020bc | crpd  | crpd |       | running | 172.20.20.15/24 | 2001:172:20:20::f/64  |
-| 22 | clab-wmf-lab-pfw3b-eqiad | 38391147f7ee | crpd  | crpd |       | running | 172.20.20.11/24 | 2001:172:20:20::b/64  |
-+----+--------------------------+--------------+-------+------+-------+---------+-----------------+-----------------------+
+root@debiantest:~# sudo clab inspect -n wmf-lab
++----+--------------------------------+--------------+---------------+-------+---------+-----------------+-----------------------+
+| #  |              Name              | Container ID |     Image     | Kind  |  State  |  IPv4 Address   |     IPv6 Address      |
++----+--------------------------------+--------------+---------------+-------+---------+-----------------+-----------------------+
+|  1 | clab-wmf-lab-asw-a-codfw       | e7f0a956561c | debian:latest | linux | running | 172.20.20.14/24 | 2001:172:20:20::e/64  |
+|  2 | clab-wmf-lab-asw-b-codfw       | 5a9a8d239881 | debian:latest | linux | running | 172.20.20.10/24 | 2001:172:20:20::a/64  |
+|  3 | clab-wmf-lab-asw-c-codfw       | 6735671fd9b4 | debian:latest | linux | running | 172.20.20.8/24  | 2001:172:20:20::8/64  |
+|  4 | clab-wmf-lab-asw-d-codfw       | 5ccfda3bd0aa | debian:latest | linux | running | 172.20.20.13/24 | 2001:172:20:20::d/64  |
+|  5 | clab-wmf-lab-asw1-b12-drmrs    | fd20c110872e | crpd          | crpd  | running | 172.20.20.47/24 | 2001:172:20:20::2f/64 |
+|  6 | clab-wmf-lab-asw1-b13-drmrs    | 54166a7e0507 | crpd          | crpd  | running | 172.20.20.27/24 | 2001:172:20:20::1b/64 |
+|  7 | clab-wmf-lab-asw1-eqsin        | 303f3dd38341 | debian:latest | linux | running | 172.20.20.5/24  | 2001:172:20:20::5/64  |
+|  8 | clab-wmf-lab-asw2-a-eqiad      | 3c7a575263ed | debian:latest | linux | running | 172.20.20.4/24  | 2001:172:20:20::4/64  |
+|  9 | clab-wmf-lab-asw2-b-eqiad      | ad7d8983da85 | debian:latest | linux | running | 172.20.20.9/24  | 2001:172:20:20::9/64  |
+| 10 | clab-wmf-lab-asw2-c-eqiad      | a58edac188b2 | debian:latest | linux | running | 172.20.20.11/24 | 2001:172:20:20::b/64  |
+| 11 | clab-wmf-lab-asw2-d-eqiad      | a2ff691f6a78 | debian:latest | linux | running | 172.20.20.12/24 | 2001:172:20:20::c/64  |
+| 12 | clab-wmf-lab-asw2-esams        | 237c05a5dacc | debian:latest | linux | running | 172.20.20.6/24  | 2001:172:20:20::6/64  |
+| 13 | clab-wmf-lab-asw2-ulsfo        | d3608834f0c8 | debian:latest | linux | running | 172.20.20.3/24  | 2001:172:20:20::3/64  |
+| 14 | clab-wmf-lab-cloudsw1-c8-eqiad | 98a934b05b6f | debian:latest | linux | running | 172.20.20.7/24  | 2001:172:20:20::7/64  |
+| 15 | clab-wmf-lab-cloudsw1-d5-eqiad | 250c03ec81a0 | debian:latest | linux | running | 172.20.20.2/24  | 2001:172:20:20::2/64  |
+| 16 | clab-wmf-lab-cr1-codfw         | 1d005d041a77 | crpd          | crpd  | running | 172.20.20.31/24 | 2001:172:20:20::1f/64 |
+| 17 | clab-wmf-lab-cr1-drmrs         | 36f18adebd43 | crpd          | crpd  | running | 172.20.20.20/24 | 2001:172:20:20::14/64 |
+| 18 | clab-wmf-lab-cr1-eqiad         | 7d5f09287ea7 | crpd          | crpd  | running | 172.20.20.49/24 | 2001:172:20:20::31/64 |
+| 19 | clab-wmf-lab-cr2-codfw         | 90b587d37b39 | crpd          | crpd  | running | 172.20.20.54/24 | 2001:172:20:20::36/64 |
+| 20 | clab-wmf-lab-cr2-drmrs         | 4751ab8f389a | crpd          | crpd  | running | 172.20.20.29/24 | 2001:172:20:20::1d/64 |
+| 21 | clab-wmf-lab-cr2-eqdfw         | 3ab9af4009dd | crpd          | crpd  | running | 172.20.20.41/24 | 2001:172:20:20::29/64 |
+| 22 | clab-wmf-lab-cr2-eqiad         | 04fecaf6e3c4 | crpd          | crpd  | running | 172.20.20.55/24 | 2001:172:20:20::37/64 |
+| 23 | clab-wmf-lab-cr2-eqord         | b944cd7acbb5 | crpd          | crpd  | running | 172.20.20.45/24 | 2001:172:20:20::2d/64 |
+| 24 | clab-wmf-lab-cr2-eqsin         | 4a968656c51e | crpd          | crpd  | running | 172.20.20.26/24 | 2001:172:20:20::1a/64 |
+| 25 | clab-wmf-lab-cr2-esams         | 4c1f69d59f58 | crpd          | crpd  | running | 172.20.20.28/24 | 2001:172:20:20::1c/64 |
+| 26 | clab-wmf-lab-cr3-eqsin         | 8ef181208793 | crpd          | crpd  | running | 172.20.20.16/24 | 2001:172:20:20::10/64 |
+| 27 | clab-wmf-lab-cr3-esams         | 816eec6f0616 | crpd          | crpd  | running | 172.20.20.36/24 | 2001:172:20:20::24/64 |
+| 28 | clab-wmf-lab-cr3-knams         | 156563e8fe50 | crpd          | crpd  | running | 172.20.20.32/24 | 2001:172:20:20::20/64 |
+| 29 | clab-wmf-lab-cr3-ulsfo         | a579d85acde4 | crpd          | crpd  | running | 172.20.20.17/24 | 2001:172:20:20::11/64 |
+| 30 | clab-wmf-lab-cr4-ulsfo         | 772a99fd9538 | crpd          | crpd  | running | 172.20.20.52/24 | 2001:172:20:20::34/64 |
+| 31 | clab-wmf-lab-lsw1-e1-eqiad     | d7ffe8901b8e | crpd          | crpd  | running | 172.20.20.50/24 | 2001:172:20:20::32/64 |
+| 32 | clab-wmf-lab-lsw1-f1-eqiad     | e4f087443273 | crpd          | crpd  | running | 172.20.20.33/24 | 2001:172:20:20::21/64 |
+| 33 | clab-wmf-lab-lvs1017           | d5fe3b0982c9 | crpd          | crpd  | running | 172.20.20.35/24 | 2001:172:20:20::23/64 |
+| 34 | clab-wmf-lab-lvs1018           | 24314c6db697 | crpd          | crpd  | running | 172.20.20.44/24 | 2001:172:20:20::2c/64 |
+| 35 | clab-wmf-lab-lvs1019           | c6f15fdfaec6 | crpd          | crpd  | running | 172.20.20.59/24 | 2001:172:20:20::3b/64 |
+| 36 | clab-wmf-lab-lvs1020           | 9479bd455d42 | crpd          | crpd  | running | 172.20.20.18/24 | 2001:172:20:20::12/64 |
+| 37 | clab-wmf-lab-lvs2007           | 9eedb3b77589 | crpd          | crpd  | running | 172.20.20.21/24 | 2001:172:20:20::15/64 |
+| 38 | clab-wmf-lab-lvs2008           | 1fb011c73a85 | crpd          | crpd  | running | 172.20.20.38/24 | 2001:172:20:20::26/64 |
+| 39 | clab-wmf-lab-lvs2009           | ff7fb7523228 | crpd          | crpd  | running | 172.20.20.37/24 | 2001:172:20:20::25/64 |
+| 40 | clab-wmf-lab-lvs2010           | 53db6b3f7805 | crpd          | crpd  | running | 172.20.20.19/24 | 2001:172:20:20::13/64 |
+| 41 | clab-wmf-lab-lvs3005           | 086dbd822759 | crpd          | crpd  | running | 172.20.20.46/24 | 2001:172:20:20::2e/64 |
+| 42 | clab-wmf-lab-lvs3006           | 638d1d63b65a | crpd          | crpd  | running | 172.20.20.34/24 | 2001:172:20:20::22/64 |
+| 43 | clab-wmf-lab-lvs3007           | 58f651924784 | crpd          | crpd  | running | 172.20.20.57/24 | 2001:172:20:20::39/64 |
+| 44 | clab-wmf-lab-lvs4005           | 18c80977ee42 | crpd          | crpd  | running | 172.20.20.24/24 | 2001:172:20:20::18/64 |
+| 45 | clab-wmf-lab-lvs4006           | 16e9e64028cd | crpd          | crpd  | running | 172.20.20.40/24 | 2001:172:20:20::28/64 |
+| 46 | clab-wmf-lab-lvs4007           | d0c37f3116d3 | crpd          | crpd  | running | 172.20.20.23/24 | 2001:172:20:20::17/64 |
+| 47 | clab-wmf-lab-lvs5001           | c78133c04782 | crpd          | crpd  | running | 172.20.20.51/24 | 2001:172:20:20::33/64 |
+| 48 | clab-wmf-lab-lvs5002           | 652c699937aa | crpd          | crpd  | running | 172.20.20.58/24 | 2001:172:20:20::3a/64 |
+| 49 | clab-wmf-lab-lvs5003           | b2f709a0fbb7 | crpd          | crpd  | running | 172.20.20.30/24 | 2001:172:20:20::1e/64 |
+| 50 | clab-wmf-lab-mr1-codfw         | f2c1bc03be26 | crpd          | crpd  | running | 172.20.20.56/24 | 2001:172:20:20::38/64 |
+| 51 | clab-wmf-lab-mr1-eqiad         | f26d0ec62df5 | crpd          | crpd  | running | 172.20.20.53/24 | 2001:172:20:20::35/64 |
+| 52 | clab-wmf-lab-mr1-eqsin         | d80f67f4fbd2 | crpd          | crpd  | running | 172.20.20.15/24 | 2001:172:20:20::f/64  |
+| 53 | clab-wmf-lab-mr1-esams         | 0afd3045ca05 | crpd          | crpd  | running | 172.20.20.48/24 | 2001:172:20:20::30/64 |
+| 54 | clab-wmf-lab-mr1-ulsfo         | 3578fe3fda4c | crpd          | crpd  | running | 172.20.20.43/24 | 2001:172:20:20::2b/64 |
+| 55 | clab-wmf-lab-pfw3a-codfw       | 6036afa171ce | crpd          | crpd  | running | 172.20.20.22/24 | 2001:172:20:20::16/64 |
+| 56 | clab-wmf-lab-pfw3a-eqiad       | b103d9142c56 | crpd          | crpd  | running | 172.20.20.39/24 | 2001:172:20:20::27/64 |
+| 57 | clab-wmf-lab-pfw3b-codfw       | b2306543dae6 | crpd          | crpd  | running | 172.20.20.42/24 | 2001:172:20:20::2a/64 |
+| 58 | clab-wmf-lab-pfw3b-eqiad       | cf8493e12f68 | crpd          | crpd  | running | 172.20.20.25/24 | 2001:172:20:20::19/64 |
++----+--------------------------------+--------------+---------------+-------+---------+-----------------+-----------------------+
 ```
-  
-You can connect to any via SSH via their IPv4 or IPv6 address, the default password is "clab123":
+
+Entries in /etc/hosts should also have been written to direct WMF production hostnames to the container management IPs, for example:
 ```
-athal@officepc:~$ ssh root@172.20.20.23
-Warning: Permanently added '172.20.20.23' (ECDSA) to the list of known hosts.
-root@172.20.20.23's password: 
-Welcome to Ubuntu 18.04.1 LTS (GNU/Linux 5.8.0-43-generic x86_64)
+root@debiantest:~# grep cr1-eqiad /etc/hosts
+172.20.20.49	clab-wmf-lab-cr1-eqiad	cr1-eqiad.wikimedia.org
+2001:172:20:20::31	clab-wmf-lab-cr1-eqiad	cr1-eqiad.wikimedia.org
+```
+    
+You can connect to any via SSH via their IPv4 or IPv6 address:
+```
+root@debiantest:~# ssh cr1-eqiad.wikimedia.org
+Welcome to Ubuntu 18.04.1 LTS (GNU/Linux 5.10.0-18-amd64 x86_64)
 
  * Documentation:  https://help.ubuntu.com
  * Management:     https://landscape.canonical.com
  * Support:        https://ubuntu.com/advantage
+
 This system has been minimized by removing packages and content that are
 not required on a system that users do not log into.
 
 To restore this content, you can run the 'unminimize' command.
-
-The programs included with the Ubuntu system are free software;
-the exact distribution terms for each program are described in the
-individual files in /usr/share/doc/*/copyright.
-
-Ubuntu comes with ABSOLUTELY NO WARRANTY, to the extent permitted by
-applicable law.
-
 
 ===>
            Containerized Routing Protocols Daemon (CRPD)
  Copyright (C) 2018-19, Juniper Networks, Inc. All rights reserved.
                                                                     <===
 
-root@cr1-codfw:~# 
+root@cr1-eqiad:~# 
 ```
-
+                                                                                       
 Run 'cli' once connected to access the JunOS command line.
 
                                                                                        
@@ -2099,302 +2133,181 @@ Run 'cli' once connected to access the JunOS command line.
   <summary>Example output - click to expand</summary>
   
 ```
-root@cr1-codfw:~# cli
-root@cr1-codfw> 
+root@cr1-eqiad:~# cli
+root@cr1-eqiad> 
 
-root@cr1-codfw> show interfaces routing 
+root@cr1-eqiad> show configuration 
+## Last commit: 2022-09-26 17:00:12 UTC by root
+version 20191212.201431_builder.r1074901;
+system {
+    root-authentication {
+        encrypted-password "$6$lB5c6$Zeud8c6IhCTE6hnZxXBl3ZMZTC2hOx9pxxYUWTHKW1oC32SATWLMH2EXarxWS5k685qMggUfFur1lq.o4p4cg1"; ## SECRET-DATA
+    }
+}
+
+root@cr1-eqiad> show interfaces routing 
 Interface        State Addresses
-eth5             Up    MPLS  enabled
+xe-3_0_6         Up    MPLS  enabled
                        ISO   enabled
-                       INET  208.80.153.221
-                       INET6 2620:0:860:fe01::2
-                       INET6 fe80::a8c1:abff:fe54:2a12
-eth6             Up    MPLS  enabled
+                       INET6 fe80::a8c1:abff:fe6a:dfc4
+                       INET  206.126.236.106
+                       INET6 2001:504:0:2:0:1:4907:2
+ae0              Up    MPLS  enabled
                        ISO   enabled
-                       INET  208.80.153.218
-                       INET6 2620:0:860:fe00::1
-                       INET6 fe80::a8c1:abff:fe62:aeec
-eth2             Up    MPLS  enabled
+                       INET6 fe80::a8c1:abff:fe5d:1e21
+                       INET  208.80.154.193
+                       INET6 2620:0:861:fe00::1
+et-1_0_2.100     Up    MPLS  enabled
                        ISO   enabled
-                       INET  198.35.26.203
-                       INET6 2620:0:863:fe07::2
-                       INET6 fe80::a8c1:abff:fec9:7dc8
-eth7             Up    MPLS  enabled
+                       INET6 fe80::a8c1:abff:fe49:f587
+                       INET  10.66.0.8
+                       INET6 2620:0:861:fe07::1
+ae1.401          Up    MPLS  enabled
                        ISO   enabled
-                       INET  208.80.153.206
-                       INET6 2620:0:860:fe05::1
-                       INET6 fe80::a8c1:abff:fec0:9482
-eth4             Up    MPLS  enabled
-                       ISO   enabled
-                       INET  103.102.166.139
-                       INET6 2001:df2:e500:fe02::2
-                       INET6 fe80::a8c1:abff:fe27:70a5
-eth1             Up    MPLS  enabled
-                       ISO   enabled
-                       INET  208.80.153.210
-                       INET6 2620:0:860:fe03::1
-                       INET6 fe80::a8c1:abff:feea:9e14
-eth11.2020       Up    MPLS  enabled
-                       ISO   enabled
-                       INET  10.192.48.2
-                       INET6 2620:0:860:104:fe00::1
-                       INET6 fe80::a8c1:abff:feb2:9124
-eth11.2004       Up    MPLS  enabled
-                       ISO   enabled
-                       INET  208.80.153.98
-                       INET6 2620:0:860:4:fe00::1
-                       INET6 fe80::a8c1:abff:feb2:9124
-eth11            Up    MPLS  enabled
-                       ISO   enabled
-eth3             Up    MPLS  enabled
-                       ISO   enabled    
-                       INET  208.80.153.200
-                       INET6 fe80::a8c1:abff:fe10:406f
-eth8.2201        Up    MPLS  enabled
-                       ISO   enabled
-                       INET  208.80.152.242
-                       INET6 2620:0:860:201:fe00::1
-                       INET6 fe80::a8c1:abff:fe21:eaf1
-eth8.2017        Up    MPLS  enabled
-                       ISO   enabled
-                       INET  10.192.0.2
-                       INET6 2620:0:860:101:fe00::1
-                       INET6 fe80::a8c1:abff:fe21:eaf1
-eth8.2001        Up    MPLS  enabled
-                       ISO   enabled
-                       INET  208.80.153.2
-                       INET6 2620:0:860:1:fe00::1
-                       INET6 fe80::a8c1:abff:fe21:eaf1
-eth8             Up    MPLS  enabled
-                       ISO   enabled
-eth10.2019       Up    MPLS  enabled
-                       ISO   enabled
-                       INET  10.192.32.2
-                       INET6 2620:0:860:103:fe00::1
-                       INET6 fe80::a8c1:abff:fe71:ea0e
-eth10.2003       Up    MPLS  enabled
-                       ISO   enabled
-                       INET  208.80.153.66
-                       INET6 2620:0:860:3:fe00::1
-                       INET6 fe80::a8c1:abff:fe71:ea0e
-eth10            Up    MPLS  enabled
-                       ISO   enabled
+                       INET6 fe80::a8c1:abff:fedd:4676
+                       INET  208.80.154.204
+                       INET6 2620:0:861:fe04::1
 lsi              Up    MPLS  enabled
                        ISO   enabled
-                       INET6 fe80::c8aa:92ff:fe5b:c9e5
+                       INET6 fe80::fcc5:13ff:fee2:3a64
+xe-4_2_2.16      Up    MPLS  enabled
+                       ISO   enabled
+                       INET6 fe80::a8c1:abff:fe33:aba
+                       INET  185.15.58.147
+                       INET6 2a02:ec80:600:fe04::2
+xe-4_2_2.13      Up    MPLS  enabled
+                       ISO   enabled
+                       INET6 fe80::a8c1:abff:fe8a:d856
+                       INET  91.198.174.250
+                       INET6 2620:0:862:fe06::1
+xe-4_2_2.12      Up    MPLS  enabled
+                       ISO   enabled
+                       INET6 fe80::a8c1:abff:feec:255f
+                       INET  208.80.153.214
+                       INET6 2620:0:860:fe08::1
+xe-4_2_0         Up    MPLS  enabled
+                       ISO   enabled
+                       INET6 fe80::a8c1:abff:feb2:3a4a
+                       INET  208.80.153.220
+                       INET6 2620:0:860:fe01::1
+xe-3_1_7         Up    MPLS  enabled
+                       ISO   enabled
+                       INET6 fe80::a8c1:abff:feb4:d47e
+                       INET  208.80.154.200
+xe-3_1_4         Up    MPLS  enabled
+                       ISO   enabled
+                       INET6 fe80::a8c1:abff:fefe:dec8
+                       INET  185.15.58.138
+                       INET6 2a02:ec80:600:fe01::1
+xe-3_0_4.1102    Up    MPLS  enabled
+                       ISO   enabled
+                       INET  208.80.154.210
+                       INET6 fe80::a8c1:abff:fef6:7abc
+xe-3_0_4.1000    Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.147.16
+                       INET6 2620:0:861:fe09::1
+                       INET6 fe80::a8c1:abff:fef6:7abc
+xe-3_0_4         Up    MPLS  enabled
+                       ISO   enabled
 lo.0             Up    MPLS  enabled
                        ISO   enabled
-                       INET  208.80.153.192
-                       INET6 2620:0:860:ffff::1
-eth9.2122        Up    MPLS  enabled
+                       INET  208.80.154.196
+                       INET6 2620:0:861:ffff::1
+gr-4_3_0.1       Up    MPLS  enabled
                        ISO   enabled
-                       INET  10.192.21.2
-                       INET6 2620:0:860:122:fe00::1
-                       INET6 fe80::a8c1:abff:fe59:d7f
-eth9.2120        Up    MPLS  enabled    
-                       ISO   enabled
-                       INET  208.80.153.186
-                       INET6 fe80::a8c1:abff:fe59:d7f
-eth9.2118        Up    MPLS  enabled
-                       ISO   enabled
-                       INET  10.192.20.2
-                       INET6 2620:0:860:118:fe00::1
-                       INET6 fe80::a8c1:abff:fe59:d7f
-eth9.2018        Up    MPLS  enabled
-                       ISO   enabled
-                       INET  10.192.16.2
-                       INET6 2620:0:860:102:fe00::1
-                       INET6 fe80::a8c1:abff:fe59:d7f
-eth9.2002        Up    MPLS  enabled
-                       ISO   enabled
-                       INET  208.80.153.34
-                       INET6 2620:0:860:2:fe00::1
-                       INET6 fe80::a8c1:abff:fe59:d7f
-eth9             Up    MPLS  enabled
-                       ISO   enabled
+                       INET6 fe80::a8c1:abff:feab:d21b
+                       INET  103.102.166.147
+                       INET6 2001:df2:e500:fe07::2
 eth0             Up    MPLS  enabled
                        ISO   enabled
-                       INET  172.20.20.23
-                       INET6 2001:172:20:20::17
-                       INET6 fe80::42:acff:fe14:1417
+                       INET  172.20.20.49
+                       INET6 2001:172:20:20::31
+                       INET6 fe80::42:acff:fe14:1431
+ae4.1023         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.53.2
+                       INET6 2620:0:861:108:fe00::1
+                       INET6 fe80::a8c1:abff:fe49:f02f
+ae4.1020         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.48.2
+                       INET6 2620:0:861:107:fe00::1
+                       INET6 fe80::a8c1:abff:fe49:f02f
+ae4.1004         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  208.80.155.98
+                       INET6 2620:0:861:4:fe00::1
+                       INET6 fe80::a8c1:abff:fe49:f02f
+ae4              Up    MPLS  enabled
+                       ISO   enabled
+ae3.1119         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.37.2
+                       INET6 2620:0:861:119:fe00::1
+                       INET6 fe80::a8c1:abff:febf:dad7
+ae3.1022         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.36.2
+                       INET6 2620:0:861:106:fe00::1
+                       INET6 fe80::a8c1:abff:febf:dad7
+ae3.1019         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.32.2
+                       INET6 2620:0:861:103:fe00::1
+                       INET6 fe80::a8c1:abff:febf:dad7
+ae3.1003         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  208.80.154.66
+                       INET6 2620:0:861:3:fe00::1
+                       INET6 fe80::a8c1:abff:febf:dad7
+ae3              Up    MPLS  enabled
+                       ISO   enabled
+ae2.1202         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  208.80.155.66
+                       INET6 2620:0:861:202:fe00::1
+                       INET6 fe80::a8c1:abff:fe9a:12a8
+ae2.1021         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.21.2
+                       INET6 2620:0:861:105:fe00::1
+                       INET6 fe80::a8c1:abff:fe9a:12a8
+ae2.1018         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.16.2
+                       INET6 2620:0:861:102:fe00::1
+                       INET6 fe80::a8c1:abff:fe9a:12a8
+ae2.1002         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  208.80.154.130
+                       INET6 2620:0:861:2:fe00::1
+                       INET6 fe80::a8c1:abff:fe9a:12a8
+ae2              Up    MPLS  enabled
+                       ISO   enabled    
+ae1.1117         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.4.2
+                       INET6 2620:0:861:117:fe00::1
+                       INET6 fe80::a8c1:abff:fe4b:3b27
+ae1.1030         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.5.2
+                       INET6 2620:0:861:104:fe00::1
+                       INET6 fe80::a8c1:abff:fe4b:3b27
+ae1.1017         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  10.64.0.2
+                       INET6 2620:0:861:101:fe00::1
+                       INET6 fe80::a8c1:abff:fe4b:3b27
+ae1.1001         Up    MPLS  enabled
+                       ISO   enabled
+                       INET  208.80.154.2
+                       INET6 2620:0:861:1:fe00::1
+                       INET6 fe80::a8c1:abff:fe4b:3b27
+ae1              Up    MPLS  enabled
+                       ISO   enabled
 
-root@cr1-codfw> 
-  
-root@cr1-codfw> show ospf interface 
-Interface           State   Area            DR ID           BDR ID          Nbrs
-eth1                PtToPt  0.0.0.0         0.0.0.0         0.0.0.0            1
-eth10.2003          DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth10.2019          DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth11.2004          DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth11.2020          DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth2                PtToPt  0.0.0.0         0.0.0.0         0.0.0.0            1
-eth4                PtToPt  0.0.0.0         0.0.0.0         0.0.0.0            1
-eth5                PtToPt  0.0.0.0         0.0.0.0         0.0.0.0            1
-eth6                PtToPt  0.0.0.0         0.0.0.0         0.0.0.0            1
-eth8.2001           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth8.2017           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth8.2201           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth9.2002           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth9.2018           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth9.2118           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth9.2120           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-eth9.2122           DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-lo.0                DRother 0.0.0.0         0.0.0.0         0.0.0.0            0
-
-root@cr1-codfw> 
-
-root@cr1-codfw> show ospf database 
-
-    OSPF database, Area 0.0.0.0
- Type       ID               Adv Rtr           Seq      Age  Opt  Cksum  Len 
-Router   91.198.174.244   91.198.174.244   0x80000005   946  0x22 0x52ad 144
-Router   91.198.174.245   91.198.174.245   0x80000004   951  0x22 0xcc2f 120
-Router   91.198.174.246   91.198.174.246   0x80000004   947  0x22 0x9943  84
-Router   103.102.166.130  103.102.166.130  0x80000005   940  0x22 0x2c16 120
-Router   103.102.166.131  103.102.166.131  0x80000005   940  0x22 0x3304 120
-Router   185.212.145.2    185.212.145.2    0x80000005   940  0x22 0x5c45 288
-Router   198.35.26.192    198.35.26.192    0x80000003   954  0x22 0x3540 120
-Router   198.35.26.193    198.35.26.193    0x80000005   944  0x22 0xd134 144
-Router  *208.80.153.192   208.80.153.192   0x80000006   942  0x22 0x4a0e 300
-Router   208.80.153.193   208.80.153.193   0x80000006   940  0x22 0x9aff 276
-Router   208.80.153.198   208.80.153.198   0x80000004   952  0x22 0x26ee  84
-Router   208.80.154.197   208.80.154.197   0x80000006   941  0x22 0x8b47 324
-Router   208.80.154.198   208.80.154.198   0x80000004   941  0x22 0x8f43 108
-  
-root@cr1-codfw> 
-
-root@cr1-codfw> show route protocol ospf 
-
-inet.0: 93 destinations, 93 routes (93 active, 0 holddown, 0 hidden)
-+ = Active Route, - = Last Active, * = Both
-
-10.20.0.0/24       *[OSPF/10] 01:03:09, metric 1192
-                       to 208.80.153.220 via eth5
-                    >  to 208.80.153.219 via eth6
-10.64.0.0/22       *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.4.0/24       *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.5.0/24       *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.16.0/22      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.20.0/24      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.21.0/24      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.32.0/22      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.36.0/24      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.37.0/24      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.48.0/22      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.64.53.0/24      *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-10.128.0.0/24      *[OSPF/10] 01:03:24, metric 392
-                    >  to 198.35.26.202 via eth2
-10.132.0.0/24      *[OSPF/10] 01:03:14, metric 2002
-                    >  to 103.102.166.138 via eth4
-91.198.174.0/25    *[OSPF/10] 01:03:09, metric 1192
-                    >  to 208.80.153.220 via eth5
-                       to 208.80.153.219 via eth6
-91.198.174.128/28  *[OSPF/10] 01:03:09, metric 1192
-                    >  to 208.80.153.220 via eth5
-                       to 208.80.153.219 via eth6
-91.198.174.228/31  *[OSPF/10] 01:03:09, metric 1210
-                    >  to 208.80.153.220 via eth5
-                       to 208.80.153.219 via eth6
-91.198.174.244/32  *[OSPF/10] 01:03:09, metric 1190
-                    >  to 208.80.153.220 via eth5
-                       to 208.80.153.219 via eth6
-91.198.174.245/32  *[OSPF/10] 01:03:09, metric 1200
-                    >  to 208.80.153.220 via eth5
-                       to 208.80.153.219 via eth6
-91.198.174.246/32  *[OSPF/10] 01:03:09, metric 1200
-                    >  to 208.80.153.220 via eth5
-                       to 208.80.153.219 via eth6
-91.198.174.248/31  *[OSPF/10] 01:03:09, metric 1190
-                       to 208.80.153.220 via eth5
-                    >  to 208.80.153.219 via eth6
-91.198.174.252/31  *[OSPF/10] 01:03:09, metric 1200
-                       to 208.80.153.220 via eth5
-                    >  to 208.80.153.219 via eth6
-91.198.174.254/31  *[OSPF/10] 01:03:09, metric 1200
-                       to 208.80.153.220 via eth5
-                    >  to 208.80.153.219 via eth6
-103.102.166.0/28   *[OSPF/10] 01:03:14, metric 2002
-                    >  to 103.102.166.138 via eth4
-103.102.166.16/28  *[OSPF/10] 01:03:14, metric 2002
-                    >  to 103.102.166.138 via eth4
-103.102.166.130/32 *[OSPF/10] 01:03:09, metric 2010
-                    >  to 103.102.166.138 via eth4
-103.102.166.131/32 *[OSPF/10] 01:03:14, metric 2000
-                    >  to 103.102.166.138 via eth4
-103.102.166.136/31 *[OSPF/10] 01:03:24, metric 4390
-                    >  to 198.35.26.202 via eth2
-103.102.166.140/31 *[OSPF/10] 01:03:14, metric 2010
-                    >  to 103.102.166.138 via eth4
-185.212.145.2/32   *[OSPF/10] 01:03:14, metric 340
-                    >  to 208.80.153.220 via eth5
-198.35.26.0/28     *[OSPF/10] 01:03:24, metric 392
-                    >  to 198.35.26.202 via eth2
-198.35.26.192/32   *[OSPF/10] 01:03:24, metric 400
-                    >  to 198.35.26.202 via eth2
-198.35.26.193/32   *[OSPF/10] 01:03:24, metric 390
-                    >  to 198.35.26.202 via eth2
-198.35.26.196/31   *[OSPF/10] 01:03:24, metric 400
-                    >  to 198.35.26.202 via eth2
-198.35.26.208/31   *[OSPF/10] 01:03:09, metric 760
-                    >  to 208.80.153.219 via eth6
-                       to 208.80.153.211 via eth1
-198.35.26.240/28   *[OSPF/10] 01:03:24, metric 392
-                    >  to 198.35.26.202 via eth2
-208.80.153.193/32  *[OSPF/10] 01:03:19, metric 10
-                    >  to 208.80.153.219 via eth6
-                       to 208.80.153.211 via eth1
-208.80.153.198/32  *[OSPF/10] 01:03:24, metric 10
-                    >  to 208.80.153.211 via eth1
-                       to 208.80.153.219 via eth6
-208.80.153.212/31  *[OSPF/10] 01:03:19, metric 20
-                       to 208.80.153.211 via eth1
-                    >  to 208.80.153.219 via eth6
-208.80.153.222/31  *[OSPF/10] 01:03:19, metric 250
-                    >  to 208.80.153.219 via eth6
-                       to 208.80.153.211 via eth1
-208.80.154.0/26    *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-208.80.154.64/26   *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-208.80.154.128/26  *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-208.80.154.192/30  *[OSPF/10] 01:03:14, metric 350
-                    >  to 208.80.153.220 via eth5
-208.80.154.196/32  *[OSPF/10] 01:03:14, metric 340
-                    >  to 208.80.153.220 via eth5
-208.80.154.197/32  *[OSPF/10] 01:03:09, metric 350
-                       to 208.80.153.220 via eth5
-                    >  to 208.80.153.219 via eth6
-208.80.154.198/32  *[OSPF/10] 01:03:09, metric 250
-                    >  to 208.80.153.219 via eth6
-                       to 208.80.153.211 via eth1
-208.80.154.208/31  *[OSPF/10] 01:03:09, metric 490
-                    >  to 208.80.153.219 via eth6
-                       to 208.80.153.211 via eth1
-208.80.154.214/31  *[OSPF/10] 01:03:19, metric 350
-                    >  to 208.80.153.219 via eth6
-                       to 208.80.153.211 via eth1
-208.80.155.64/28   *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-208.80.155.96/27   *[OSPF/10] 01:03:14, metric 342
-                    >  to 208.80.153.220 via eth5
-224.0.0.5/32       *[OSPF/10] 01:03:44, metric 1
-                       MultiRecv
-
-inet6.0: 51 destinations, 51 routes (51 active, 0 holddown, 0 hidden)
-
-root@cr1-codfw> 
 ```
 </details>                                                                                       
                                                                                        
