@@ -136,7 +136,7 @@ sudo apt install containerlab
 
 ### Generate an SSH keypair to allow passwordless ssh to the containers
 
-The script will link ```~/.ssh/id_ed25519.pub``` to /root/.ssh/authorized_keys within the container images to allow SSH without password (required for Homer and the other scripts using the JunOS Netconf connection).  If you do not have an ED25519 keypair already generate one as follows:
+The script will link ```~/.ssh/id_ed25519.pub``` to ```/root/.ssh/authorized_keys``` within the containers to allow SSH without password (required for Homer and the other scripts using the JunOS Netconf connection).  If you do not have an ED25519 keypair already generate one as follows:
 ```
 ssh-keygen -t ed25519
 ```
