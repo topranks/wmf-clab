@@ -71,7 +71,7 @@ Most typically I run the lab in a Debian VM on my system, to keep it all isolate
 
 The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to execute all the below from a root shell to keep things simple.
 
-### Dependencies
+### Install Dependencies
 
 Python3, [Pynetbox](https://github.com/netbox-community/pynetbox), Juniper's [PyEz library](https://www.juniper.net/documentation/us/en/software/junos-pyez/junos-pyez-developer/topics/concept/junos-pyez-overview.html), WMF's [Homer](https://doc.wikimedia.org/homer/master/introduction.html#homer-configuration-manager-for-network-devices) and [Docker](https://www.docker.com/) are required to generate the topology and run the lab. 
 
@@ -85,7 +85,7 @@ Then the Python components:
 pip3 install pynetbox junos-eznc homer
 ```
 
-Next install docker following their (instructions)[https://docs.docker.com/engine/install/debian/].
+Next install docker following their [instructions](https://docs.docker.com/engine/install/debian/).
 
 Once installed we should import the crpd container image.  Copy the tar.gz file over to the system with scp or similar, then add it to the docker system:
 
