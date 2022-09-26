@@ -4,7 +4,7 @@
 
 Script to create a topology file for [containerlab](https://containerlab.srlinux.dev/) to simulate the WMF network (see this [presentation](https://www.youtube.com/watch?v=n81Tc1g4W5U) for an intro.)
 
-The script use WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.
+The script uses WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.
 
 As crpd is a lightweight container it requires significantly less resources than VM-based appliances such as vMX.  This means it is possible to simulate many virtual nodes on even modest hardware.
 
@@ -2004,8 +2004,6 @@ renamed '/tmp/new_hosts' -> '/etc/hosts'
 + sudo ip netns exec clab-wmf-lab-lvs3007 ip addr add 10.20.0.17/24 dev eth1
 + sudo ip netns exec clab-wmf-lab-lvs3007 ip route add default via 10.20.0.2
 + ../junos_push_lvs_conf.py -c ../lvs_config.json
-/usr/local/lib/python3.9/dist-packages/paramiko/transport.py:219: CryptographyDeprecationWarning: Blowfish has been deprecated
-  "class": algorithms.Blowfish,
 Pushed LVS config for lvs1017.
 Pushed LVS config for lvs1018.
 Pushed LVS config for lvs1019.
@@ -2104,7 +2102,7 @@ root@debiantest:~# grep cr1-eqiad /etc/hosts
 2001:172:20:20::31	clab-wmf-lab-cr1-eqiad	cr1-eqiad.wikimedia.org
 ```
     
-You can connect to any via SSH via their IPv4 or IPv6 address:
+You can connect to any via SSH using these hostnames:
 ```
 root@debiantest:~# ssh cr1-eqiad.wikimedia.org
 Welcome to Ubuntu 18.04.1 LTS (GNU/Linux 5.10.0-18-amd64 x86_64)
@@ -2310,7 +2308,59 @@ ae1              Up    MPLS  enabled
 
 ```
 </details>                                                                                       
-                                                                                       
+
+#### Configure devices with Homer
+
+As devices are reachable on thier normal hostnames, and we have a local copy of the public and mock private Homer repos (with some modifcations to allow them work with crpd), we can run Homer to configure the containerized devices so they will match production.  
+
+##### Homer Configuration    
+    
+Homer, and the netbox plugin, should be installed and configured as normal.  It is strongly advised to this the correct way, and not repeat the authors [idiotic steps](https://phabricator.wikimedia.org/P34916).
+
+The file ```/etc/homer/config.yaml``` should be created as usual.  Important elements that are required here are:
+    
+- Path to the correct mock private and public repos
+- Correct plugin reference for the Netbox plugin
+- 'transports' configured with username 'root' and referencing correct ssh config file
+    
+For example:
+```
+base_paths:
+  public: /root/wmf-lab/operations-homer-public
+  private: /root/wmf-lab/operations-homer-mock-private
+  output: /tmp
+
+netbox:
+  url: https://netbox.wikimedia.org:443
+  token:  bdecfb0485aa50fa2ece720ae2c80eaa13511efb
+  inventory:
+    device_roles:
+      - asw
+      - cr
+      - msw
+      - mr
+      - cloudsw
+      - pfw
+    device_statuses:
+      - Active
+      - Staged
+  plugin: homer_plugins.wmf-netbox
+
+transports:
+  username: root
+  ssh_config: /root/.ssh/config
+  junos:
+    ignore_warning:
+      - statement must contain additional statements
+      - statement has no contents
+      - config will be applied to ports
+
+capirca:
+  netbox_definitons: true
+```
+    
+    
+
 #### Linux shell inside container
 
 It is possible to connect to the bash shell of any of the crpd containers using SSH as described previously.  You can also use "docker exec" to spawn a new bash shell inside the container.  In both cases the resulting shell runs inside the container with the limited userspace available.
