@@ -127,9 +127,7 @@ hub.juniper.net/routing/crpd   19.4R1.10   5b6acdd96efb   2 years ago   320MB
 
 6. Finally we add the containerlab repo to our system and install it:
 ```
-echo "deb [trusted=yes] https://apt.fury.io/netdevops/ /" | \
-sudo tee -a /etc/apt/sources.list.d/netdevops.list
-
+echo "deb [trusted=yes] https://apt.fury.io/netdevops/ /" | sudo tee -a /etc/apt/sources.list.d/netdevops.list
 sudo apt update
 sudo apt install containerlab
 ```
