@@ -61,7 +61,7 @@ Real Juniper devices operated by WMF use standard JunOS interface naming such as
 
 WMF routers commonly have connections to layer-2 switches, typically with multiple 802.1q sub-interfaces on each link connecting to a different Vlan on the switch.  Many of these are configured as OSPF 'passive' interfaces, or have BGP configured on them to servers (such as load-balancers).
 
-To model L2 switches containerlab nodes are added of kind 'linux', set to run a standard Debian-based container image.  Each of these has a vlan-aware bridge added to them by the startup script, called 'br0'.  All link interfaces terminating on these nodes are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed on each.  This effectively connects nodes at layer-2 similar to our L2 switches, but using Linux bridge to do so rather than any Juniper-coded forwarding.
+To model L2 switches containerlab nodes are added of kind 'linux', set to run a standard Debian-based container image.  Each of these has a vlan-aware bridge added to them by the startup script, called 'br0'.  All link interfaces terminating on these nodes are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed on each.  This effectively connects nodes at layer-2 similar to our L2 switches, but using Linux bridge to do so.
 
 Sub-interfaces on ports connecting to these bridges, within the crpd containers, are also created by the start script.  Containerlab does not provide a mechanism to add these itself.  The addresses for these sub-ints are added by the start script during deploy.
 
