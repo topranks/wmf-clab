@@ -55,7 +55,7 @@ To overcome this the "start" shell script uses the Linux [ip](https://manpages.d
 
 ### Interface Naming
 
-Real Juniper devices operated by WMF use standard JunOS interface naming such as 'ge-0/0/0', 'et-5/0/1' etc.  Linux does not, unfortunately, allow a forward slash in a network device name, so we cannot give the crpd interfaces exactly matching those on production routers.  So in the lab interfaces are named with underscores replacing forward slashes.
+Real Juniper devices operated by WMF use standard JunOS interface naming such as 'ge-0/0/0', 'et-5/0/1' etc.  Linux does not allow a forward slash in a network device name, however, so we cannot give the crpd interfaces exactly matching those on production routers.  The lab interfaces are instead the same as production with slashes relaced by underscores.
 
 ### Modelling switches
 
@@ -67,7 +67,7 @@ Sub-interfaces on ports connecting to these bridges, within the crpd containers,
 
 ## Running the script to generate topology / config files.
 
-Most typically I run the lab in a Debian VM on my system, to keep it all isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow each container to run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
+Most typically I run the lab in a Debian VM on my system, to keep it all isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
 
 The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to execute all the below from a root shell to keep things simple.
 
@@ -2028,7 +2028,7 @@ root@debiantest:~/wmf-lab/output#
 ```
 </details>
 
-##### Connecting to crpd instances
+### Connecting to crpd instances
   
 Once started you can see the status of the containers as follows:
 ```
@@ -2346,7 +2346,7 @@ Address          Interface              State           ID               Pri  De
 185.15.58.146    xe-4_2_2.16            Full            185.15.58.129    128    31
 ```
     
-#### Add additional config to containerlab nodes saved from production
+### Add additional config to containerlab nodes saved from production
     
 Assuming you have run the ```junos_get_live_conf.py``` script from a machine with production access, transfer the "junos_data" directory to the wmf-lab folder on the machine running the lab.  You can then run ```junos_push_saved_data.py``` to add this additional config to the lab devices.
     
