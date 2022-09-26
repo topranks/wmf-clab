@@ -1,0 +1,42 @@
+protocols {
+    {% for protocol in ['ospf', 'ospf3'] %}
+    replace: {{ protocol }} {
+        export ospf_export;
+        reference-bandwidth 100g;
+        area 0.0.0.0 {
+            {% for interface in ospf.p2p if hostname in interface.keys() %}
+            interface {{ interface[hostname] | replace("/", "_") | replace(".0", "") | replace(":", "_") }} {
+                interface-type p2p;
+                link-protection;
+                {% if interface.metric | d(False) %}
+                metric {{ interface.metric }};
+                {% endif %}
+            }
+            {% endfor %}
+            {% for local_int, circuit in netbox.device.circuits.items() if circuit['type']['slug'] == 'transport' and circuit['custom_fields']['state'] and circuit['status']['value'] == 'active' and circuit['termination_a'] != circuit['termination_z'] != None %}
+            interface {{ local_int | replace("/", "_") | replace(":", "_") }} {
+                interface-type p2p;
+                link-protection;
+                {% if circuit['custom_fields']['state'] == 'preferred' %}
+                metric {{ ( circuit['custom_fields']['metric'] * 0.5 ) | round | int }};
+                {% elif circuit['custom_fields']['state'] == 'drained' %}
+                metric 5000;
+                {% elif (circuit['custom_fields']['metric'] | int) != 0 %}
+                metric {{ circuit['custom_fields']['metric'] | int }};
+                {% endif %}
+            }
+            {% endfor %}
+            interface lo.0 {
+                passive;
+            }
+            {% if hostname in ospf.stub %}
+            {% for interface in ospf.stub[hostname] %}
+            interface {{ interface | replace("/", "_") | replace(":", "_") }} {
+                passive;
+            }
+            {% endfor %}
+            {% endif %}
+        }
+    }
+    {% endfor %}
+}
