@@ -199,7 +199,7 @@ Writing stop_wmf-lab.sh...
 Writing fqdn.yaml...
 ```
 
-NOTE:  The script takes quite a while to run.  This is due to my poor coding and the very slow Netbox REST API.  I hope to get time to work on optimizing it in the near future, potentially using Netbox's GraphQL API, or at least focusing on removing the number of API calls which wasn't high on the agenda during development.  Luckily the topology does not need to be re-generated very frequently, so the script only needs to run occasionally (like when new transport links are added).
+NOTE:  The script takes quite a while to run.  This is due to my poor coding and the very slow Netbox REST API.  I hope to get time to work on optimizing it in the near future, potentially using Netbox's GraphQL API, or at least focusing on removing the number of API calls (which wasn't high on the agenda during development).  Luckily the topology does not need to be re-generated very frequently, so the script only needs to run occasionally (like when new transport links are added).
     
 When complete you should find a new sub-folder has been created, called "output", containing the start and stop scripts, as well as the containerlab topology file.
 ```
@@ -2323,45 +2323,81 @@ The file ```/etc/homer/config.yaml``` should be created as usual.  Important ele
 - Correct plugin reference for the Netbox plugin
 - 'transports' configured with username 'root' and referencing correct ssh config file
     
-For example:
+You may find [this example](https://phabricator.wikimedia.org/P34917) useful.
+    
+##### Run Homer
+    
+Homer can be run for the simulated core routers as follows:
 ```
-base_paths:
-  public: /root/wmf-lab/operations-homer-public
-  private: /root/wmf-lab/operations-homer-mock-private
-  output: /tmp
-
-netbox:
-  url: https://netbox.wikimedia.org:443
-  token:  bdecfb0485aa50fa2ece720ae2c80eaa13511efb
-  inventory:
-    device_roles:
-      - asw
-      - cr
-      - msw
-      - mr
-      - cloudsw
-      - pfw
-    device_statuses:
-      - Active
-      - Staged
-  plugin: homer_plugins.wmf-netbox
-
-transports:
-  username: root
-  ssh_config: /root/.ssh/config
-  junos:
-    ignore_warning:
-      - statement must contain additional statements
-      - statement has no contents
-      - config will be applied to ports
-
-capirca:
-  netbox_definitons: true
+homer "cr*" commit "configure clab devices"
 ```
     
+As ususal you should be prompted to confirm the changes on each device.  When complete you can connect to any of the reconfigured crpd nodes and see the changes.  For instance OSPF interfaces should be up and match the live network:
+```
+root@cr1-eqiad> show ospf neighbor 
+Address          Interface              State           ID               Pri  Dead
+208.80.154.194   ae0                    Full            208.80.154.197   128    38
+185.15.58.139    xe-3_1_4               Full            185.15.58.128    128    39
+208.80.153.221   xe-4_2_0               Full            208.80.153.192   128    31
+208.80.153.215   xe-4_2_2.12            Full            208.80.153.198   128    36
+91.198.174.251   xe-4_2_2.13            Full            91.198.174.246   128    37
+185.15.58.146    xe-4_2_2.16            Full            185.15.58.129    128    31
+```
+    
+##### Add additional config to containerlab nodes saved from production
+    
+Assuming you have run the ```junos_get_live_conf.py``` script from a machine with production access, transfer the "junos_data" directory to the wmf-lab folder on the machine running the lab.  You can then run ```junos_push_saved_data.py``` to add this additional config to the lab devices.
+    
+NOTE: There is a [bug](https://github.com/Juniper/py-junos-eznc/issues/1208) in how cRPD reports the JunOS version in use, which prevents retrieving cRPD configs in JSON format using PyEz, which tries to verify the version is recent enough to support this.  If you hit this you may see this error message:
+```
+root@debiantest:~/wmf-lab# ./junos_push_saved_data.py 
+/usr/local/lib/python3.9/dist-packages/jnpr/junos/device.py:886: RuntimeWarning: Native JSON support is only from 14.2 onwards
+```
+    
+The simple solution until this is fixed is to modify the device.py file just before the line it lists, and change ```ver_info.major[0] >= 15``` to ```ver_info.major[0] >= 0```.  This will cause it to proceed regardless of JunOS version, and the script should run:
+```
+root@debiantest:~/wmf-lab# ./junos_push_saved_data.py 
+Pushed revised config for cr1-codfw.
+Pushed revised config for cr1-drmrs.
+Pushed revised config for cr1-eqiad.
+Pushed revised config for cr2-codfw.
+Pushed revised config for cr2-drmrs.
+Pushed revised config for cr2-eqdfw.
+Pushed revised config for cr2-eqiad.
+Pushed revised config for cr2-eqord.
+Pushed revised config for cr2-eqsin.
+Pushed revised config for cr2-esams.
+Pushed revised config for cr3-eqsin.
+Pushed revised config for cr3-esams.
+Pushed revised config for cr3-knams.
+Pushed revised config for cr3-ulsfo.
+Pushed revised config for cr4-ulsfo.
+```
+    
+With this configuration added we should now also see Confed BGP peerings up and running:
+```
+root@cr1-eqiad> show bgp summary | match Estab 
+10.64.0.80            64600        130        127       0       0       18:36 Establ
+10.64.16.60           64600        130        127       0       0       18:32 Establ
+10.64.32.17           64600        132        130       0       0       18:52 Establ
+10.64.48.72           64600        131        128       0       0       18:48 Establ
+91.198.174.251        65003         46         43       0       0        1:22 Establ
+185.15.58.139         65006         70         25       0       0        1:40 Establ
+185.15.58.146         65006         77         25       0       0        1:34 Establ
+198.35.26.192         65004         35         29       0       0        1:18 Establ
+198.35.26.193         65004         19         30       0       0        1:16 Establ
+208.80.153.192        65002         36         50       0       0        1:33 Establ
+208.80.153.193        65002         45         67       0       0        1:28 Establ
+208.80.154.197        65001         25         23       0       0        1:27 Establ
+208.80.154.198        65020         53         67       0       0        1:30 Establ
+2620:0:861:ffff::2       65001         29         43       0       0        1:30 Establ
+2a02:ec80:600:fe01::2       65006         32         40       0       0        1:36 Establ
+2a02:ec80:600:fe04::1       65006         42         42       0       0        1:23 Establ
+```
+
     
 
-#### Linux shell inside container
+### Linux shell inside container
 
 It is possible to connect to the bash shell of any of the crpd containers using SSH as described previously.  You can also use "docker exec" to spawn a new bash shell inside the container.  In both cases the resulting shell runs inside the container with the limited userspace available.
   
@@ -2374,57 +2410,57 @@ root@officepc:/home/cathal#
   
 Netns names created by clab match the names shown under "clab inspect" above.  Or you can use "sudo ip netns list" to see them.
   
-Once you have a shell inside the container you can run normal Linux commands in it, for instance:
+Once you have a shell inside the container you can use all userspace tools that are available in the OS:
   
 ```
-cathal@officepc:~$ sudo ip netns exec clab-wmf-lab-cr1-codfw bash
-root@officepc:/home/cathal# 
-root@officepc:/home/cathal# mtr -b -w -c 5 91.198.174.130
-Start: 2021-08-17T17:15:14+0100
-HOST: officepc                                          Loss%   Snt   Last   Avg  Best  Wrst StDev
-  1.|-- xe-4-2-0.cr1-eqiad.wikimedia.org (208.80.153.220)  0.0%     5    0.0   0.0   0.0   0.1   0.0
-  2.|-- ae0.cr2-eqiad.wikimedia.org (208.80.154.194)       0.0%     5    0.1   0.1   0.0   0.1   0.0
-  3.|-- xe-0-1-3.cr2-esams.wikimedia.org (91.198.174.249)  0.0%     5    0.1   0.1   0.0   0.1   0.0
-  4.|-- ae1-102.cr3-esams.wikimedia.org (91.198.174.130)   0.0%     5    0.1   0.1   0.1   0.1   0.0
-root@officepc:/home/cathal# 
-root@officepc:/home/cathal# 
-root@officepc:/home/cathal# ip -br addr show | sort -V
-eth0@if132       UP             172.20.20.23/24 2001:172:20:20::17/64 fe80::42:acff:fe14:1417/64 
-eth1@if166       UP             208.80.153.210/31 2620:0:860:fe03::1/64 fe80::a8c1:abff:feea:9e14/64 
-eth2@if148       UP             198.35.26.203/31 2620:0:863:fe07::2/64 fe80::a8c1:abff:fec9:7dc8/64 
-eth3@if197       UP             208.80.153.200/31 fe80::a8c1:abff:fe10:406f/64 
-eth4@if225       UP             103.102.166.139/31 2001:df2:e500:fe02::2/64 fe80::a8c1:abff:fe27:70a5/64 
-eth5@if183       UP             208.80.153.221/31 2620:0:860:fe01::2/64 fe80::a8c1:abff:fe54:2a12/64 
-eth6@if213       UP             208.80.153.218/31 2620:0:860:fe00::1/64 fe80::a8c1:abff:fe62:aeec/64 
-eth7@if153       UP             208.80.153.206/31 2620:0:860:fe05::1/64 fe80::a8c1:abff:fec0:9482/64 
-eth8.2001@eth8   UP             208.80.153.2/27 2620:0:860:1:fe00::1/64 fe80::a8c1:abff:fe21:eaf1/64 
-eth8.2017@eth8   UP             10.192.0.2/22 2620:0:860:101:fe00::1/64 fe80::a8c1:abff:fe21:eaf1/64 
-eth8.2201@eth8   UP             208.80.152.242/28 2620:0:860:201:fe00::1/64 fe80::a8c1:abff:fe21:eaf1/64 
-eth8@if161       UP             
-eth9.2002@eth9   UP             208.80.153.34/27 2620:0:860:2:fe00::1/64 fe80::a8c1:abff:fe59:d7f/64 
-eth9.2018@eth9   UP             10.192.16.2/22 2620:0:860:102:fe00::1/64 fe80::a8c1:abff:fe59:d7f/64 
-eth9.2118@eth9   UP             10.192.20.2/24 2620:0:860:118:fe00::1/64 fe80::a8c1:abff:fe59:d7f/64 
-eth9.2120@eth9   UP             208.80.153.186/29 fe80::a8c1:abff:fe59:d7f/64 
-eth9.2122@eth9   UP             10.192.21.2/24 2620:0:860:122:fe00::1/64 fe80::a8c1:abff:fe59:d7f/64 
-eth9@if133       UP             
-eth10.2003@eth10 UP             208.80.153.66/27 2620:0:860:3:fe00::1/64 fe80::a8c1:abff:fe71:ea0e/64 
-eth10.2019@eth10 UP             10.192.32.2/22 2620:0:860:103:fe00::1/64 fe80::a8c1:abff:fe71:ea0e/64 
-eth10@if135      UP             
-eth11.2004@eth11 UP             208.80.153.98/27 2620:0:860:4:fe00::1/64 fe80::a8c1:abff:feb2:9124/64 
-eth11.2020@eth11 UP             10.192.48.2/22 2620:0:860:104:fe00::1/64 fe80::a8c1:abff:feb2:9124/64 
-eth11@if251      UP             
-lo               UNKNOWN        127.0.0.1/8 208.80.153.192/32 2620:0:860:ffff::1/128 ::1/128 
-lsi              UNKNOWN        fe80::c8aa:92ff:fe5b:c9e5/64 
-```
+root@debiantest:~# sudo ip netns exec clab-wmf-lab-cr2-codfw bash
+root@debiantest:~# mtr -b -w -c 5 91.198.174.192
+Start: 2022-09-26T19:49:22+0100
+HOST: debiantest                                        Loss%   Snt   Last   Avg  Best  Wrst StDev
+  1.|-- xe-0-1-0.cr2-eqord.wikimedia.org (208.80.153.222)  0.0%     5    0.0   0.1   0.0   0.1   0.0
+  2.|-- xe-4-2-0.cr2-eqiad.wikimedia.org (208.80.154.208)  0.0%     5    0.1   0.1   0.1   0.1   0.0
+  3.|-- xe-0-1-3.cr2-esams.wikimedia.org (91.198.174.249)  0.0%     5    0.1   0.1   0.1   0.1   0.0
+  4.|-- text-lb.esams.wikimedia.org (91.198.174.192)       0.0%     5    0.1   0.1   0.1   0.1   0.0
 
-### Showing real-world equivalent interface names  
-  
-The equivalent real-world interface (configured as alias) is visible if you run "ip link show":
-```
-root@cr1-codfw:~# ip link show dev eth3
-124: eth3@if123: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65000 qdisc noqueue state UP mode DEFAULT group default 
-    link/ether aa:c1:ab:23:da:b5 brd ff:ff:ff:ff:ff:ff link-netnsid 7
-    alias xe-5/1/1
+root@debiantest:~# 
+root@debiantest:~# ip -br addr show | sort -V
+ae0@if1525       UP             208.80.153.219/31 2620:0:860:fe00::2/64 fe80::a8c1:abff:fe52:6507/64 
+ae1.402@if1516   UP             208.80.153.208/31 2620:0:860:fe06::1/64 fe80::a8c1:abff:fe8c:7d32/64 
+ae1.2001@ae1     UP             208.80.153.3/27 2620:0:860:1:fe00::2/64 fe80::a8c1:abff:fe08:914a/64 
+ae1.2017@ae1     UP             10.192.0.3/22 2620:0:860:101:fe00::2/64 fe80::a8c1:abff:fe08:914a/64 
+ae1.2201@ae1     UP             208.80.152.243/28 2620:0:860:201:fe00::2/64 fe80::a8c1:abff:fe08:914a/64 
+ae1@if1508       UP             
+ae2.2002@ae2     UP             208.80.153.35/27 2620:0:860:2:fe00::2/64 fe80::a8c1:abff:fe75:b7e0/64 
+ae2.2018@ae2     UP             10.192.16.3/22 2620:0:860:102:fe00::2/64 fe80::a8c1:abff:fe75:b7e0/64 
+ae2.2118@ae2     UP             10.192.20.3/24 2620:0:860:118:fe00::2/64 fe80::a8c1:abff:fe75:b7e0/64 
+ae2.2120@ae2     UP             208.80.153.187/29 fe80::a8c1:abff:fe75:b7e0/64 
+ae2.2122@ae2     UP             10.192.21.3/24 2620:0:860:122:fe00::2/64 fe80::a8c1:abff:fe75:b7e0/64 
+ae2@if1520       UP             
+ae3.2003@ae3     UP             208.80.153.67/27 2620:0:860:3:fe00::2/64 fe80::a8c1:abff:fea1:6bda/64 
+ae3.2019@ae3     UP             10.192.32.3/22 2620:0:860:103:fe00::2/64 fe80::a8c1:abff:fea1:6bda/64 
+ae3@if1512       UP             
+ae4.2004@ae4     UP             208.80.153.99/27 2620:0:860:4:fe00::2/64 fe80::a8c1:abff:fef2:3c5e/64 
+ae4.2020@ae4     UP             10.192.48.3/22 2620:0:860:104:fe00::2/64 fe80::a8c1:abff:fef2:3c5e/64 
+ae4@if1518       UP             
+eth0@if1353      UP             172.20.20.54/24 2001:172:20:20::36/64 fe80::42:acff:fe14:1436/64 
+lo               UNKNOWN        127.0.0.1/8 208.80.153.193/32 2620:0:860:ffff::2/128 ::1/128 
+lsi              UNKNOWN        fe80::3ccf:95ff:feef:64f/64 
+xe-1_0_1_0@if1510 UP             208.80.153.202/31 fe80::a8c1:abff:fe9c:b3be/64 
+xe-1_0_1_1@if1515 UP             208.80.153.223/31 2620:0:860:fe02::2/64 fe80::a8c1:abff:fefb:bbb4/64 
+xe-1_1_1_1@if1522 UP             208.80.154.215/31 2620:0:861:fe06::2/64 fe80::a8c1:abff:feab:32a9/64 
+xe-1_1_1_2@if1527 UP             208.80.153.212/31 2620:0:860:fe04::1/64 fe80::a8c1:abff:fe60:e262/64 
+
+root@debiantest:~# 
+root@debiantest:~# tcpdump -l -nn -i xe-1_0_1_1 
+tcpdump: verbose output suppressed, use -v[v]... for full protocol decode
+listening on xe-1_0_1_1, link-type EN10MB (Ethernet), snapshot length 262144 bytes
+19:55:14.222109 IP6 fe80::a8c1:abff:fefb:bbb4 > ff02::5: OSPFv3, Hello, length 40
+19:55:14.788824 IP 208.80.153.223 > 224.0.0.5: OSPFv2, Hello, length 60
+19:55:14.976436 IP 208.80.153.222 > 224.0.0.5: OSPFv2, LS-Update, length 64
+19:55:17.844495 IP 208.80.153.193.51511 > 208.80.154.198.179: Flags [P.], seq 210047072:210047091, ack 91513286, win 15008, options [nop,nop,TS val 753967328 ecr 552261362], length 19: BGP
+19:55:17.844512 IP 208.80.154.198.179 > 208.80.153.193.51511: Flags [.], ack 19, win 15466, options [nop,nop,TS val 552280075 ecr 753967328], length 0
+19:55:18.887949 IP 208.80.153.222 > 224.0.0.5: OSPFv2, Hello, length 60
+19:55:21.501512 IP6 fe80::a8c1:abff:feab:fe45 > ff02::5: OSPFv3, Hello, length 40    
 ```
 
 ### Stopping the lab
@@ -2438,60 +2474,68 @@ sudo ./stop_wmf-lab.sh
   <summary>Example output - click to expand</summary>
   
 ```  
-cathal@officepc:~/containerlab/wmf-lab$ sudo ./stop_wmf-lab.sh 
-[sudo] password for cathal: 
+root@debiantest:~/wmf-lab/output# ./stop_wmf-lab.sh 
 + sudo clab destroy -t wmf-lab.yaml
 INFO[0000] Parsing & checking topology file: wmf-lab.yaml 
 INFO[0000] Destroying lab: wmf-lab                      
-INFO[0001] Removed container: clab-wmf-lab-mr1-eqsin    
-INFO[0001] Removed container: clab-wmf-lab-pfw3a-eqiad  
-INFO[0001] Removed container: clab-wmf-lab-cr4-ulsfo    
-INFO[0001] Removed container: clab-wmf-lab-cr3-knams    
-INFO[0001] Removed container: clab-wmf-lab-cr2-eqord    
-INFO[0001] Removed container: clab-wmf-lab-cr2-eqdfw    
-INFO[0002] Removed container: clab-wmf-lab-mr1-codfw    
-INFO[0002] Removed container: clab-wmf-lab-mr1-ulsfo    
-INFO[0002] Removed container: clab-wmf-lab-mr1-esams    
-INFO[0002] Removed container: clab-wmf-lab-mr1-eqiad    
-INFO[0002] Removed container: clab-wmf-lab-pfw3b-codfw  
-INFO[0002] Removed container: clab-wmf-lab-cr2-codfw    
-INFO[0002] Removed container: clab-wmf-lab-cr2-esams    
-INFO[0002] Removed container: clab-wmf-lab-cr2-eqiad    
-INFO[0003] Removed container: clab-wmf-lab-pfw3b-eqiad  
-INFO[0003] Removed container: clab-wmf-lab-cr3-eqsin    
-INFO[0003] Removed container: clab-wmf-lab-cr3-ulsfo    
-INFO[0003] Removed container: clab-wmf-lab-pfw3a-codfw  
-INFO[0003] Removed container: clab-wmf-lab-cr1-eqiad    
-INFO[0003] Removed container: clab-wmf-lab-cr3-esams    
-INFO[0003] Removed container: clab-wmf-lab-cr2-eqsin    
-INFO[0003] Removed container: clab-wmf-lab-cr1-codfw    
-INFO[0003] Removing container entries from /etc/hosts file 
-INFO[0003] Deleting network 'clab'...                   
-+ sudo ip link set dev asw-a-codfw down
-+ sudo brctl delbr asw-a-codfw
-+ sudo ip link set dev asw-b-codfw down
-+ sudo brctl delbr asw-b-codfw
-+ sudo ip link set dev asw-c-codfw down
-+ sudo brctl delbr asw-c-codfw
-+ sudo ip link set dev asw-d-codfw down
-+ sudo brctl delbr asw-d-codfw
-+ sudo ip link set dev csw1-c8-eqiad down
-+ sudo brctl delbr csw1-c8-eqiad
-+ sudo ip link set dev asw2-a-eqiad down
-+ sudo brctl delbr asw2-a-eqiad
-+ sudo ip link set dev asw2-b-eqiad down
-+ sudo brctl delbr asw2-b-eqiad
-+ sudo ip link set dev asw2-c-eqiad down
-+ sudo brctl delbr asw2-c-eqiad
-+ sudo ip link set dev asw2-d-eqiad down
-+ sudo brctl delbr asw2-d-eqiad
-+ sudo ip link set dev csw1-d5-eqiad down
-+ sudo brctl delbr csw1-d5-eqiad
-+ sudo ip link set dev asw1-eqsin down
-+ sudo brctl delbr asw1-eqsin
-+ sudo ip link set dev asw2-esams down
-+ sudo brctl delbr asw2-esams
-+ sudo ip link set dev asw2-ulsfo down
-+ sudo brctl delbr asw2-ulsfo
+INFO[0002] Removed container: clab-wmf-lab-asw2-c-eqiad 
+INFO[0003] Removed container: clab-wmf-lab-mr1-ulsfo    
+INFO[0003] Removed container: clab-wmf-lab-lvs2009      
+INFO[0003] Removed container: clab-wmf-lab-lvs3005      
+INFO[0003] Removed container: clab-wmf-lab-mr1-esams    
+INFO[0003] Removed container: clab-wmf-lab-cr2-eqdfw    
+INFO[0004] Removed container: clab-wmf-lab-asw2-d-eqiad 
+INFO[0004] Removed container: clab-wmf-lab-cr2-eqsin    
+INFO[0004] Removed container: clab-wmf-lab-mr1-eqiad    
+INFO[0004] Removed container: clab-wmf-lab-asw2-a-eqiad 
+INFO[0004] Removed container: clab-wmf-lab-pfw3a-codfw  
+INFO[0004] Removed container: clab-wmf-lab-asw1-b12-drmrs 
+INFO[0004] Removed container: clab-wmf-lab-cloudsw1-c8-eqiad 
+INFO[0004] Removed container: clab-wmf-lab-cr3-knams    
+INFO[0004] Removed container: clab-wmf-lab-cr4-ulsfo    
+INFO[0004] Removed container: clab-wmf-lab-lvs5003      
+INFO[0004] Removed container: clab-wmf-lab-lvs3006      
+INFO[0004] Removed container: clab-wmf-lab-asw-d-codfw  
+INFO[0004] Removed container: clab-wmf-lab-pfw3b-eqiad  
+INFO[0004] Removed container: clab-wmf-lab-lvs2010      
+INFO[0005] Removed container: clab-wmf-lab-asw-c-codfw  
+INFO[0005] Removed container: clab-wmf-lab-asw-a-codfw  
+INFO[0005] Removed container: clab-wmf-lab-cloudsw1-d5-eqiad 
+INFO[0005] Removed container: clab-wmf-lab-asw-b-codfw  
+INFO[0005] Removed container: clab-wmf-lab-lvs1017      
+INFO[0005] Removed container: clab-wmf-lab-lvs4006      
+INFO[0005] Removed container: clab-wmf-lab-mr1-codfw    
+INFO[0005] Removed container: clab-wmf-lab-cr1-drmrs    
+INFO[0005] Removed container: clab-wmf-lab-lvs3007      
+INFO[0005] Removed container: clab-wmf-lab-asw2-ulsfo   
+INFO[0005] Removed container: clab-wmf-lab-cr3-esams    
+INFO[0006] Removed container: clab-wmf-lab-lsw1-e1-eqiad 
+INFO[0006] Removed container: clab-wmf-lab-lvs1019      
+INFO[0006] Removed container: clab-wmf-lab-cr2-eqiad    
+INFO[0006] Removed container: clab-wmf-lab-pfw3a-eqiad  
+INFO[0006] Removed container: clab-wmf-lab-lsw1-f1-eqiad 
+INFO[0006] Removed container: clab-wmf-lab-cr2-codfw    
+INFO[0006] Removed container: clab-wmf-lab-lvs1020      
+INFO[0006] Removed container: clab-wmf-lab-asw1-eqsin   
+INFO[0006] Removed container: clab-wmf-lab-lvs1018      
+INFO[0006] Removed container: clab-wmf-lab-lvs4007      
+INFO[0006] Removed container: clab-wmf-lab-lvs2008      
+INFO[0006] Removed container: clab-wmf-lab-mr1-eqsin    
+INFO[0006] Removed container: clab-wmf-lab-asw1-b13-drmrs 
+INFO[0006] Removed container: clab-wmf-lab-asw2-b-eqiad 
+INFO[0006] Removed container: clab-wmf-lab-cr2-esams    
+INFO[0006] Removed container: clab-wmf-lab-lvs5001      
+INFO[0006] Removed container: clab-wmf-lab-cr2-eqord    
+INFO[0007] Removed container: clab-wmf-lab-cr2-drmrs    
+INFO[0007] Removed container: clab-wmf-lab-cr3-ulsfo    
+INFO[0007] Removed container: clab-wmf-lab-lvs5002      
+INFO[0007] Removed container: clab-wmf-lab-lvs4005      
+INFO[0007] Removed container: clab-wmf-lab-cr1-eqiad    
+INFO[0007] Removed container: clab-wmf-lab-cr1-codfw    
+INFO[0007] Removed container: clab-wmf-lab-pfw3b-codfw  
+INFO[0007] Removed container: clab-wmf-lab-cr3-eqsin    
+INFO[0007] Removed container: clab-wmf-lab-asw2-esams   
+INFO[0007] Removed container: clab-wmf-lab-lvs2007      
+INFO[0007] Removing containerlab host entries from /etc/hosts file 
 ```
 </details>   
