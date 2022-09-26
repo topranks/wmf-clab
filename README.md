@@ -95,7 +95,7 @@ docker load -i junos-routing-crpd-docker-19.4R1.10.tgz
 
 To verify it loaded run "docker images", and take note of the 'image id' it's been assigned:
 ```
-root@debiantest:/home/debian# docker images
+root@debiantest:~# docker images
 REPOSITORY                     TAG         IMAGE ID       CREATED       SIZE
 hub.juniper.net/routing/crpd   19.4R1.10   5b6acdd96efb   2 years ago   320MB
 ```
@@ -118,7 +118,7 @@ docker.io/library/debian:latest
 
 You can verify the images have been sucessfully imported with "docker images":
 ```
-root@debiantest:/home/debian# docker images
+root@debiantest:~# docker images
 REPOSITORY                     TAG         IMAGE ID       CREATED       SIZE
 debian                         latest      43d28810c1b4   13 days ago   124MB
 crpd                           latest      5b6acdd96efb   2 years ago   320MB
