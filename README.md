@@ -14,7 +14,9 @@ Two additional scripts are included, one which can run on a device with keys tha
 
 #### Juniper cRPD - Containerised Routing Protocol Daemon
 
-Juniper's crpd is basically just their routing-stack software (i.e. OSPF, BGP, IS-IS implementation) deployed in a container.  Unlike virtual-machine based platforms such as [vMX](https://www.juniper.net/us/en/products/routers/mx-series/vmx-virtual-router-software.html), it does not implement any dataplane funcationality.  Instead it runs the various protocols and builds the per-protocol and global RIB, and then uses the normal Linux [netlink](https://en.wikipedia.org/wiki/Netlink) interface to program routes into the Linux network namespace of the crpd container.  This means that, while the OSPF, BGP and other protocol implemenations should operate exactly as on a real Juniper router, packet encapsulation and forwarding is being performed by Linux.  As such crpd is only 100% valid to test some things (such as changes to OSPF metrics) but not others (like how MPLS label stacks or Vlan tags are added to packets).
+Juniper's crpd is basically just their routing-stack software (i.e. OSPF, BGP, IS-IS implementation) deployed in a container.  Unlike virtual-machine based platforms such as [vMX](https://www.juniper.net/us/en/products/routers/mx-series/vmx-virtual-router-software.html), it does not implement any dataplane funcationality.  Instead it runs the various protocols and builds the per-protocol and global RIB, and then uses the normal Linux [netlink](https://en.wikipedia.org/wiki/Netlink) interface to program routes into the Linux network namespace of the crpd container.  
+
+This means that, while the OSPF, BGP and other protocol implemenations should operate exactly as on a real Juniper router, packet encapsulation and forwarding is being performed by Linux.  As such crpd is only 100% valid to test some things (such as changes to OSPF metrics) but not others (like how MPLS label stacks or Vlan tags are added to packets).
 
 #### Lab Overview
 
