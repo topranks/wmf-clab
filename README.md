@@ -100,7 +100,7 @@ REPOSITORY                     TAG         IMAGE ID       CREATED       SIZE
 hub.juniper.net/routing/crpd   19.4R1.10   5b6acdd96efb   2 years ago   320MB
 ```
 
-Then tag it as 'crpd:latest' (the name the containerlab topolofy file will look for):
+Then tag it as 'crpd:latest' (the name the containerlab topology file will look for):
 ```
 docker tag 5b6acdd96efb crpd:latest
 ```
