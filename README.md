@@ -20,7 +20,7 @@ This means that, while the OSPF, BGP and other protocol implemenations should op
 
 At a high level the approach to building the lab is as follows:
 
-1. Run the ```gen_topo.py```, which generates required topology files:
+1. Run ```gen_topo.py```, which performs these steps to generates the required files:
     1. Connect to WMF Netbox and discover all core routers, links and circuits between them.
     2. Generate a YAML containerlab topology file based on the discovered topology
     3. Write a startup bash script which will:
