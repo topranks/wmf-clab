@@ -6,7 +6,7 @@ Scripting to create a topology file for [containerlab](https://containerlab.srli
 
 The script uses WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.  Some companion scripts are included to export manually added config from production routers, and push it to the containerlab nodes.
 
-As crpd is a lightweight container it requires significantly less resources than VM-based appliances such as vMX.  This means it is possible to simulate many virtual nodes on even modest hardware.
+As crpd is a lightweight container it requires significantly less resources than VM-based appliances such as vMX.  This means it is possible to simulate many virtual nodes on relatively modest hardware.
 
 ## Overview 
 
