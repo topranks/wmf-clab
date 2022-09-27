@@ -61,11 +61,15 @@ WMF routers commonly have connections to layer-2 switches, typically with multip
 
 The lab uses vanilla Debian containers to model the switches.  Each has a vlan-aware bridge 'br0' added to them by the startup script.  All interfaces on them are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed.  This connects nodes at layer-2 similar to our switches, but using Linux bridge.
 
-Router sub-interfaces connecting to these bridges are also created by the start script, as containerlab does not support creating vlan-based interfaces directly.
+### Sub-interfaces
+
+Router sub-interfaces connecting to switches are also created by the start script, as containerlab does not support creating vlan-based interfaces directly.
 
 ## Running the script for the first time
 
-Most typically I run the lab in a Debian VM on my system, to keep everything isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
+The lab should run on any Linux system with Python3 and docker.  I typically it in a Debian VM, to keep everything isolated.  It is not advised to run directly on a device with direct production router access, to avoid accidentially connecting to a real device thinking it's a lab node.
+
+It should be run on a system with minimum 8GB RAM, and preferably 10GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs are reccomended but it should work with 2 or less.
 
 The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to do all operations from a root shell to make it simple.
 
