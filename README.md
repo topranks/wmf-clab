@@ -105,13 +105,7 @@ docker tag 5b6acdd96efb crpd:latest
 
 5. Install a debain container image from docker hub which we use for the L2 switches
 ```
-root@debiantest:~# docker pull debian
-Using default tag: latest
-latest: Pulling from library/debian
-23858da423a6: Pull complete 
-Digest: sha256:3e82b1af33607aebaeb3641b75d6e80fd28d36e17993ef13708e9493e30e8ff9
-Status: Downloaded newer image for debian:latest
-docker.io/library/debian:latest
+docker pull debian
 ```
 
 You can verify the images have been sucessfully imported with "docker images":
@@ -137,19 +131,19 @@ The script will link ```~/.ssh/id_ed25519.pub``` to ```/root/.ssh/authorized_key
 ssh-keygen -t ed25519
 ```
 
-The JunOS PyEz library needs to be passed an SSH config file, which explicity specifies the SSH public key to use when connecting.  By default the scripts in this repo will attempt to use '~/.ssh/config' for this.  So create this file if not present, with contents as follows:
+The JunOS PyEz library needs to be passed an SSH config file, which explicity specifies the SSH public key to use when connecting.  By default the scripts in this repo will attempt to use '~/.ssh/config' for this.  So create this file if not present, and set it to use the generated key for all hosts:
 ```
 Host *
     IdentityFile /root/.ssh/id_ed25519
 ```
 
-### Clone this repo and run the script to generate the lab topology:
+### Clone this repo and generate the lab topology:
 
 Clone this repo as follows:
 ```
 git clone --depth 1 https://github.com/topranks/wmf-lab.git
 ```
-You can then change to the 'wmf-lab' directory and run the "gen_topo.py" script, it will ask for an API key to connect to the WMF Netbox server and begin building the topology.  If you have a license file to run crpd the path can be provided with the '-l' option, which will add the license parameter for crpd nodes in the containerlab topology.  The lab will run without a license file, but it is needed for BGP, so it's limited use without.
+You can then change to the 'wmf-lab' directory and run the "gen_topo.py" script, it will ask for an API key to connect to the WMF Netbox server and begin building the topology.  If you have a license file for crpd the path should be provided with the '-l' option.  The lab will run without a license file, but BGP adjacencies will not come up as that is a licensed feature, so it's limited use without.
 ```
 cmooney@wikilap:~/wmf-lab$ ./gen_topo.py -l ~/wmf-lab/crpd.lic
 Netbox API Key: 
@@ -2096,8 +2090,8 @@ root@debiantest:~# sudo clab inspect -n wmf-lab
 Entries in /etc/hosts should also have been written to direct WMF production hostnames to the container management IPs, for example:
 ```
 root@debiantest:~# grep cr1-eqiad /etc/hosts
-172.20.20.49	clab-wmf-lab-cr1-eqiad	cr1-eqiad.wikimedia.org
-2001:172:20:20::31	clab-wmf-lab-cr1-eqiad	cr1-eqiad.wikimedia.org
+172.20.20.49	    clab-wmf-lab-cr1-eqiad  cr1-eqiad.wikimedia.org
+2001:172:20:20::31  clab-wmf-lab-cr1-eqiad  cr1-eqiad.wikimedia.org
 ```
     
 You can connect to any via SSH using these hostnames:
@@ -2313,7 +2307,7 @@ As devices are reachable on thier normal hostnames, and we have a local copy of 
 
 #### Homer Configuration    
     
-Homer, and the netbox plugin, should be installed and configured as normal.  It is strongly advised to this the correct way, and avoid [doing this](https://phabricator.wikimedia.org/P34916).
+Homer, and the netbox plugin, should be installed and configured as normal.  It is strongly advised to do this the correct way, and avoid [doing this](https://phabricator.wikimedia.org/P34916).
 
 The file ```/etc/homer/config.yaml``` should be created as usual.  Important elements that are required here are:
     
@@ -2325,12 +2319,12 @@ You may find [this example](https://phabricator.wikimedia.org/P34917) useful.
     
 #### Run Homer
     
-Homer can be run for the simulated core routers as follows:
+Run homer against the simulated CR nodes:
 ```
 homer "cr*" commit "configure clab devices"
 ```
     
-As ususal you should be prompted to confirm the changes on each device.  When complete you can connect to any of the reconfigured crpd nodes and see the changes.  For instance OSPF interfaces should be up and match the live network:
+As ususal you should be prompted to confirm the changes on each device.  When complete you can connect to any of the configured nodes and see the changes.  For instance OSPF interfaces should be up and match the live network:
 ```
 root@cr1-eqiad> show ospf neighbor 
 Address          Interface              State           ID               Pri  Dead
@@ -2393,7 +2387,6 @@ root@cr1-eqiad> show bgp summary | match Estab
 2a02:ec80:600:fe04::1       65006         42         42       0       0        1:23 Establ
 ```
 
-    
 
 ### Linux shell inside container
 
