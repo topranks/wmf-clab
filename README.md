@@ -47,9 +47,9 @@ At a high level the approach to building the lab is as follows:
 
 ### Interface Addressing
 
-Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For most of the containerized network nodes it supports this is not an issue - most allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd, however.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to enable OSPF, BGP etc. which will run over those interfaces.
+Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For many of the containerized platforms it supports this is not an issue - most allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd, however.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to enable OSPF, BGP etc. which will run over those interfaces.
 
-To overcome this the "start" shell script uses the Linux [ip](https://manpages.debian.org/bullseye/iproute2/ip-route.8.en.html) command to add interface IPs as required once the containers have been created by clab.
+To overcome this the "start" shell script uses the Linux [ip](https://manpages.debian.org/bullseye/iproute2/ip-route.8.en.html) command to add interface IPs to containers after they have been initialized.
 
 ### Interface Naming
 
@@ -59,15 +59,15 @@ Real Juniper devices operated by WMF use standard JunOS interface naming such as
 
 WMF routers commonly have connections to layer-2 switches, typically with multiple 802.1q sub-interfaces on each link connecting to a different Vlan on the switch.  Many of these are configured as OSPF 'passive' interfaces, or have BGP configured on them to servers (such as load-balancers).
 
-To model L2 switches containerlab nodes are added of kind 'linux', set to run a standard Debian-based container image.  Each of these has a vlan-aware bridge added to them by the startup script, called 'br0'.  All link interfaces terminating on these nodes are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed on each.  This effectively connects nodes at layer-2 similar to our L2 switches, but using Linux bridge to do so.
+To model L2 switches containerlab nodes are added of kind 'linux', set to run a standard Debian-based container image.  Each of these has a vlan-aware bridge added to them by the startup script, called 'br0'.  All link interfaces terminating on these nodes are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed on each.  This effectively connects nodes at layer-2 similar to our legacy switches, but using Linux bridge.
 
-Sub-interfaces on ports connecting to these bridges, within the crpd containers, are also created by the start script.  Containerlab does not provide a mechanism to add these itself.  The addresses for these sub-ints are added by the start script during deploy.
+Sub-interfaces on ports connecting to these bridges, within the crpd containers, are also created by the start script, as containerlab does not support creating vlan-based interfaces directly.
 
 ## Running the script for the first time
 
-Most typically I run the lab in a Debian VM on my system, to keep it all isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
+Most typically I run the lab in a Debian VM on my system, to keep everything isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
 
-The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to execute all the below from a root shell to keep things simple.
+The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to do all operations from a root shell to make it simple.
 
 ### Install Dependencies
 
@@ -85,7 +85,7 @@ pip3 install pynetbox junos-eznc homer
 
 3. Next install docker following their [instructions](https://docs.docker.com/engine/install/debian/).
 
-4. Once installed we should import the crpd container image.  Copy the tar.gz file over to the system with scp or similar, then add it to docker:
+4. We then import the crpd container image.  Copy the tar.gz file over to the system with scp or similar, then add it to docker:
 
 ```
 docker load -i junos-routing-crpd-docker-19.4R1.10.tgz
@@ -2344,15 +2344,15 @@ Address          Interface              State           ID               Pri  De
     
 ### Add additional config to containerlab nodes saved from production
     
-Assuming you have run the ```junos_get_live_conf.py``` script from a machine with production access, transfer the "junos_data" directory to the wmf-lab folder on the machine running the lab.  You can then run ```junos_push_saved_data.py``` to add this additional config to the lab devices.
+Assuming you have run the ```junos_get_live_conf.py``` script from a machine with production access, transfer the "junos_data" directory it created to the wmf-lab folder on the machine running the lab.  You can then run ```junos_push_saved_data.py``` to add this additional config to the lab devices.
     
-NOTE: There is a [bug](https://github.com/Juniper/py-junos-eznc/issues/1208) in how cRPD reports the JunOS version its running.  This prevents retrieving cRPD configs in JSON format using PyEz, as the library tries and fails to verify the JunOS version is recent enough.  If you hit this problem you will see the following error message:
+NOTE: There is a [bug](https://github.com/Juniper/py-junos-eznc/issues/1208) in how cRPD reports the JunOS version it's running.  This prevents retrieving cRPD configs in JSON format using PyEz, as the library tries and fails to verify the JunOS version is recent enough.  If you hit this problem you will see the following error message:
 ```
 root@debiantest:~/wmf-lab# ./junos_push_saved_data.py 
 /usr/local/lib/python3.9/dist-packages/jnpr/junos/device.py:886: RuntimeWarning: Native JSON support is only from 14.2 onwards
 ```
     
-The simple solution until this is fixed is to modify the device.py file just before the line it lists, and change ```ver_info.major[0] >= 15``` to ```ver_info.major[0] >= 0```.  This will cause it to proceed regardless of JunOS version, and the script should run:
+The simple solution until this is fixed is to modify the device.py file just before the line it lists, and change ```ver_info.major[0] >= 15``` to ```ver_info.major[0] >= 0```.  This will cause it to proceed regardless of JunOS version, and the script should work:
 ```
 root@debiantest:~/wmf-lab# ./junos_push_saved_data.py 
 Pushed revised config for cr1-codfw.
