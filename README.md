@@ -57,11 +57,11 @@ Real Juniper devices operated by WMF use standard JunOS interface naming such as
 
 ### Modelling switches
 
-WMF routers commonly have connections to layer-2 switches, typically with multiple 802.1q sub-interfaces on each link connecting to a different Vlan on the switch.  
+WMF routers commonly have connections to layer-2 switches, typically with multiple 802.1q sub-interfaces on each link connecting multiple Vlans on the switch.  
 
-In the lab these are modelled by using basic containers of kind 'linux', using a standard Debian container image.  Each of these has a vlan-aware bridge added to them by the startup script, called 'br0'.  All interfaces terminating on these nodes are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed.  This connects nodes at layer-2 similar to our legacy switches, but using Linux bridge.
+The lab uses vanilla Debian containers to model the switches.  Each has a vlan-aware bridge 'br0' added to them by the startup script.  All interfaces on them are bound to the br0 device, and set to either 'access' or 'trunk' mode with the correct Vlan's allowed.  This connects nodes at layer-2 similar to our switches, but using Linux bridge.
 
-Sub-interfaces on router ports conneced to these bridges are also created by the start script, as containerlab does not support creating vlan-based interfaces directly.
+Router sub-interfaces connecting to these bridges are also created by the start script, as containerlab does not support creating vlan-based interfaces directly.
 
 ## Running the script for the first time
 
