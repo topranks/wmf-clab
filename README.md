@@ -2,15 +2,13 @@
 
 ![wmf-lab topology](https://github.com/topranks/wmf-lab/blob/main/clab_wmf-lab.png)
 
-Script to create a topology file for [containerlab](https://containerlab.srlinux.dev/) to simulate the WMF network (see this [presentation](https://www.youtube.com/watch?v=n81Tc1g4W5U) for an intro.)
+Scripting to create a topology file for [containerlab](https://containerlab.srlinux.dev/) to simulate the WMF network (see this [presentation](https://www.youtube.com/watch?v=n81Tc1g4W5U) for an intro.)
 
-The script uses WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.
+The script uses WMF Netbox, and homer public repo YAML files, to collect information on devices running on the WMF network and create a topology to simulate them using docker/containerlab, with Juniper's [crpd](https://www.juniper.net/documentation/us/en/software/crpd/crpd-deployment/topics/concept/understanding-crpd.html) container image as router nodes.  Some companion scripts are included to export manually added config from production routers, and push it to the containerlab nodes.
 
 As crpd is a lightweight container it requires significantly less resources than VM-based appliances such as vMX.  This means it is possible to simulate many virtual nodes on even modest hardware.
 
-Two additional scripts are included, one which can run on a device with keys that can connect to produciton routers, and gathers config and operational state from the live network, dumping it to JSON files.  The other companion script can be used to push this config to the containerlab instances, filling in the gaps for elements that are confgiured manually in the current infra.  Some other basic tooling is included to gather LVS service IPs from production so they can be announced to the simulated network elements.
-
-## Approach 
+## Overview 
 
 ### Juniper cRPD - Containerised Routing Protocol Daemon
 
@@ -18,7 +16,7 @@ Juniper's crpd is basically just their routing-stack software (i.e. OSPF, BGP, I
 
 This means that, while the OSPF, BGP and other protocol implemenations should operate exactly as on a real Juniper router, packet encapsulation and forwarding is being performed by Linux.  As such crpd is only 100% valid to test some things (such as changes to OSPF metrics) but not others (like how MPLS label stacks or Vlan tags are added to packets).
 
-### Lab Overview
+### Lab Workflow
 
 At a high level the approach to building the lab is as follows:
 
@@ -45,7 +43,7 @@ At a high level the approach to building the lab is as follows:
 6. Run the ```junos_push_saved_data.py``` script to disable BGP groups not needed, and add additional config from production devices saved in step 2.1.
 
 
-## Integration with containerlab
+## Containerlab / cRPD Notes
 
 ### Interface Addressing
 
@@ -65,7 +63,7 @@ To model L2 switches containerlab nodes are added of kind 'linux', set to run a 
 
 Sub-interfaces on ports connecting to these bridges, within the crpd containers, are also created by the start script.  Containerlab does not provide a mechanism to add these itself.  The addresses for these sub-ints are added by the start script during deploy.
 
-## Running the script to generate topology / config files.
+## Running the script for the first time
 
 Most typically I run the lab in a Debian VM on my system, to keep it all isolated.  It should be possible to run on any Linux system with Python3 and docker, however.  It is advised to run on a system with minimum 8GB RAM, and preferably 12GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs is reccomended but it should work with 2 or less.
 
@@ -214,7 +212,7 @@ drwxrwxr-x 5 cmooney cmooney 4.0K Aug 17 16:49 ..
 
 The script also clones the Homer public repo into the current directory, and modifies / replaces some template files within it to make them compatible with crpd.
 
-## Running the lab
+## Starting the virtual lab
 
 ### Start script
 
