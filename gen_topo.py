@@ -7,27 +7,33 @@ import yaml
 import os
 from pathlib import Path
 import sys
-
 import json
 
 parser = argparse.ArgumentParser(description='WMF Container Lab Topology Generator')
 parser.add_argument('--netbox', help='Netbox server IP / Hostname', type=str, default='netbox.wikimedia.org')
 parser.add_argument('-k', '--key', help='Netbox API Token / Key', type=str)
 parser.add_argument('--name', help='Name for clab project, file names based on this.', default='wmf-lab')
-parser.add_argument('-l', '--license', help='License file name for crpd if desired', type=str)
+parser.add_argument('-l', '--license', help='License file name for crpd if available', type=str)
 args = parser.parse_args()
 
 def main():
-    global devices, links, nb
-    devices = {}
-    links = {}
+    global nb, devices, links, yaml_data, device_transits, dummy_routes
+    devices, links, yaml_data, device_transits = {}, {}, {}, {}
     nb_url = "https://{}".format(args.netbox)
     nb_key = get_nb_key()
     nb = pynetbox.api(nb_url, token=nb_key, threading=True)
 
-    get_info()
     prep_homer_repo()
+    get_device_transits()
+    add_isp_router()
+    get_info()
+
     add_lvs_devices()
+
+    # Load list of random routes we announce from fake isp router node
+    with open('dummy_routes.yaml', 'r') as yaml_file:
+        dummy_routes = yaml.safe_load(yaml_file)
+
     write_files()
 
 
@@ -42,7 +48,7 @@ def get_nb_key():
 def get_info():
     core_routers = nb.dcim.devices.filter(role="cr")
     for router in core_routers:
-        print("Processing {}...".format(router.name))
+        print(f"Gathering Netbox data for {router.name}...")
         if router.status.value in ('active', 'planned'):
             router_ints = list(nb.dcim.interfaces.filter(device_id=router.id))
             # router_ints = [router_int for router_int in nb_ints]
@@ -60,43 +66,64 @@ def get_info():
                         # if interface.connected_endpoint_type = 'dcim.frontport':
                         # https://gerrit.wikimedia.org/r/c/operations/software/homer/+/813604
 
-                        if interface.connected_endpoint_type == "circuits.circuittermination":
-                            add_cct_interfaces(router, interface, int_addrs)
+                        if interface.link_peer_type == "circuits.circuittermination":
+                            circuit = interface.link_peer.circuit
+                            add_circuit_interface(router, interface, int_addrs, circuit)
+                        
+                        elif interface.link_peer_type == "dcim.frontport":
+                            if interface.link_peer.rear_port.link_peer_type == "circuits.circuittermination":
+                                circuit = interface.link_peer.rear_port.link_peer.circuit
+                                add_circuit_interface(router, interface, int_addrs, circuit)
 
                         # Gateway interfaces facing L2 switches
                         elif interface.description.lower().startswith("subnet"):
                             add_sw_subint(router, interface, int_addrs, router_ints)
 
                         else:
-                            add_generic_interfaces(router, interface, int_addrs)
+                            # Remaining transports over VPLS, GRE etc.
+                            add_generic_transport(router, interface, int_addrs)
 
 
-def add_cct_interfaces(router, interface, int_addrs):
-    circuit = nb.circuits.circuits.get(interface.connected_endpoint.circuit.id)
-    if circuit.type.slug == "transport":
-        add_transport_circuit(router, interface, int_addrs, circuit)
-    # TODO - Add Transit, Peering.
-
-
-def add_transport_circuit(router, interface, int_addrs, circuit):
-    """ Adds device interfaces and entry in links{} for a given transport circuit
-    Gets far-side details from circuit termination """
-    descr = "{} Transport {}".format(circuit.provider.name, circuit.cid)
-
-    # Get far-side interface and far-side addresses:
-    if circuit.termination_a.connected_endpoint.id == interface.id:
-        interface_b = nb.dcim.interfaces.get(circuit.termination_z.connected_endpoint.id)
+def add_circuit_interface(router, interface, int_addrs, circuit):
+    if circuit.type.slug == "transit":
+        add_transit_circuit(router, interface, int_addrs, circuit)
     else:
-        interface_b = nb.dcim.interfaces.get(circuit.termination_a.connected_endpoint.id)
-    interface_b_addrs = list(nb.ipam.ip_addresses.filter(interface_id=interface_b.id))
+        add_generic_transport(router, interface, int_addrs)
 
-    # Add interfaces to routers either side and link itself
+
+def add_transit_circuit(router, interface, int_addrs, circuit):
+    """ Adds device interface to WMF device terminating transit circuit, plus a 
+        link from it to the 'isp_router' node and an interface there to terminate 
+        it and simulate the ISP side """
+
+    # Add WMF node interface    
+    descr = f"{circuit.provider} Transit CCT {str(circuit)}"
     add_device_interface(router.name, interface.name, int_addrs, "crpd", descr)
-    add_device_interface(interface_b.device.name, interface_b.name, interface_b_addrs, "crpd", descr)
-    add_ordered_link(router.name, interface, interface_b.device.name, interface_b)
 
+    # Add 'isp_router' interface and record WMF peer IP + required ASN
+    isp_rtr_int = get_next_eth_int(devices['isp_router'])
+    descr = f"Peering to {router.name} {interface.name}"
+    isp_rtr_addrs = []
+    for nb_ip in int_addrs:
+        wmf_ip = ipaddress.ip_interface(str(nb_ip))
+        for peer_ip in device_transits[router.name].keys():
+            if peer_ip in wmf_ip.network:
+                isp_rtr_addrs.append(f"{peer_ip}/{wmf_ip.network.prefixlen}")
+                local_as = device_transits[router.name][peer_ip]['AS']
+                if local_as not in devices['isp_router']['bgp_groups']:
+                    devices['isp_router']['bgp_groups'][local_as] = {
+                        'provider': device_transits[router.name][peer_ip]['provider'],
+                        'wmf_peers': []
+                }
+                devices['isp_router']['bgp_groups'][local_as]['wmf_peers'].append(str(wmf_ip.ip))
+                break
+    add_device_interface('isp_router', isp_rtr_int, isp_rtr_addrs, "crpd", descr)
 
-def add_generic_interfaces(router, interface, int_addrs):
+    # Add link
+    add_link(router.name, interface.name, 'isp_router', isp_rtr_int)
+ 
+
+def add_generic_transport(router, interface, int_addrs):
     """ Adds device interfaces and entry in links{} for a generic L3 p2p link
         Gets far-side details using link IPs """
     far_side_int = get_addr_far_side(int_addrs)
@@ -220,6 +247,15 @@ def add_device_interface(router_name, int_name, int_addrs, router_kind, descr):
         }
         
 
+def add_isp_router():
+    devices['isp_router'] = {}
+    devices['isp_router']['kind'] = "crpd"
+    devices['isp_router']['phys_ints'] = {}
+    devices['isp_router']['subints'] = {}
+    devices['isp_router']['sub_type'] = "isp_router"
+    devices['isp_router']['bgp_groups'] = {}
+
+
 def add_device(router_name, kind, sub_type=None):
     if router_name not in devices.keys():
         devices[router_name] = {}
@@ -278,13 +314,12 @@ def add_loopback(router, int_addrs):
 def write_files():
     # For debugging purposes
     '''
-    print()
-    for device_name, device_vars in devices.items():
-        print("{} - {}".format(device_name, device_vars))
-        print()
-    print()
-    for link in links.values():
-        print(link)
+    from pprintpp import pprint as pp
+    pp(devices)
+    print("\n\n")
+    pp(links)
+    print("\n\n")
+    pp(dummy_routes)
     '''
 
     p = Path('output')
@@ -293,7 +328,9 @@ def write_files():
     write_start_script()
     write_stop_script()
     write_fqdn_map()
+    write_isp_rtr_config()
     print()
+    
 
 def write_clab_topology():
     out_data = {
@@ -365,6 +402,8 @@ def write_start_script():
                     args.name, device_name, address))
 
         out_file.write(f"sudo ip netns exec clab-{args.name}-{device_name} ip route del default via 172.20.20.1\n")
+        out_file.write(f"sudo ip netns exec clab-{args.name}-{device_name} ip -6 route del default via 2001:172:20:20::1\n")
+            
         for resolver in dns_resolvers:
             # Should be changed to detect v4/v6 IP and use appropriate next-hop, also discover GW IP and not assume default
             out_file.write(f"sudo ip netns exec clab-{args.name}-{device_name} ip route add {resolver} via 172.20.20.1\n")
@@ -396,7 +435,6 @@ def write_start_script():
                                    f"bridge vlan add dev {int_vars['clab_dev']} vid {int_vars['access_vlan']} " \
                                    f"pvid untagged\n")
 
-
             if int_vars['addrs']:
                 for address in int_vars['addrs']:
                     out_file.write("sudo ip netns exec clab-{}-{} ip addr add {} dev {}\n".format(
@@ -424,7 +462,8 @@ def write_start_script():
 
         out_file.write("\n")
 
-    out_file.write('../junos_push_lvs_conf.py -c "../lvs_config.json"\n\n')
+    out_file.write('\n../junos_push_lvs_conf.py -c ../lvs_config.json\n\n')
+    out_file.write('../junos_push_isp_router_conf.py -c ./isp_router_conf.json\n')
 
     out_file.close()
     os.chmod("output/start_{}.sh".format(args.name), 0o755)
@@ -452,10 +491,23 @@ def write_stop_script():
     os.chmod("output/stop_{}.sh".format(args.name), 0o755)
 
 
+def get_device_transits():
+    """ Parses devices.yaml and extracts transit peer data for each device """
+    for device_name, device_vars in yaml_data['devices'].items():
+        if "transits" in device_vars['config'].keys():
+            short_name = device_name.split(".")[0]
+            device_transits[short_name] = {}
+            for peer_ip_str, peer_vars in device_vars['config']['transits'].items():
+                peer_ip = ipaddress.ip_address(peer_ip_str)
+                device_transits[short_name][peer_ip] = {}
+                device_transits[short_name][peer_ip]['provider'] = peer_vars['provider']
+                device_transits[short_name][peer_ip]['AS'] = \
+                    yaml_data['common']['transit_providers'][peer_vars['provider']]['AS']
+
+
 def prep_homer_repo():
     """ Clones homer public repo and makes some modifications to allow it to work with crpd rather
         than MX. """
-
     # clone the repo using git
     clone_homer_repo()
 
@@ -475,21 +527,33 @@ def prep_homer_repo():
     os.system("rm -f operations-homer-public/templates/common/ospf.conf && cp templates/ospf.j2 operations-homer-public/templates/common/ospf.conf")
     # Replace routing-options with one that just covers aggregates, no RPKI etc.
     os.system("rm -f operations-homer-public/templates/cr/routing-options.conf && cp templates/routing-options.j2 operations-homer-public/templates/cr/routing-options.conf")
+
+    # Load data from YAML files so it's available to us
+    with open('operations-homer-public/config/devices.yaml', 'r') as yaml_file:
+        yaml_data['devices'] = yaml.safe_load(yaml_file)
+    with open('operations-homer-public/config/common.yaml', 'r') as yaml_file:
+        yaml_data['common'] = yaml.safe_load(yaml_file)
+    with open('operations-homer-public/config/sites.yaml', 'r') as yaml_file:
+        yaml_data['sites'] = yaml.safe_load(yaml_file)
+    with open('operations-homer-public/config/roles.yaml', 'r') as yaml_file:
+        yaml_data['roles'] = yaml.safe_load(yaml_file)
+
     print()
 
+
 def clone_homer_repo():
-    print()
     if Path('operations-homer-public').is_dir():
         print("Deleting existing homer public repo directory...")
         os.system("rm -Rf operations-homer-public")
         
     if Path('operations-homer-mock-private').is_dir():
-        print("Deleting existing homer mock private repo directory...")
+        print("Deleting existing homer mock private repo directory...\n")
         os.system("rm -Rf operations-homer-mock-private")
 
     os.system("git clone --depth 1 https://github.com/wikimedia/operations-homer-public")
+    print()
     os.system("git clone --depth 1 https://github.com/wikimedia/operations-homer-mock-private")
-
+    print()
 
 def remove_capirca_key(filename):
     """ Loads data from YAML file, removes dict keys with value 'capirca' and re-writes """
@@ -532,9 +596,7 @@ def remove_prefix_lists_j2file(filename, pfx_lists):
 
 def add_lvs_devices():
     """ Parse sites.yaml from Homer repo and create crpd device to represent each LVS """
-    print("Adding LVS devices...")
-    with open('operations-homer-public/config/sites.yaml') as yaml_file:
-        site_data = yaml.safe_load(yaml_file.read())
+    print("\nAdding LVS devices...")
 
     # If saved YAML file with LVS service IPs is present load the data
     try:
@@ -543,7 +605,7 @@ def add_lvs_devices():
     except FileNotFoundError:
         lvs_vips = None
 
-    for site_name, site_vars in site_data.items():
+    for site_name, site_vars in yaml_data['sites'].items():
         try:
             for lvs_name, lvs_ip in site_vars['lvs_neighbors'].items():
                 # Get vlan associated with IP from netbox
@@ -569,7 +631,7 @@ def add_lvs_devices():
 
 
 def get_lvs_dev(lvs_name, lvs_ip, lvs_vips):
-    """ Creates device detail block for an LVS """
+    """ Creates device entry for lvs - only ever has 1 interface """
     lvs_dev = {
         'kind': 'crpd',
         'sub_type': 'lvs',
@@ -589,15 +651,9 @@ def get_lvs_dev(lvs_name, lvs_ip, lvs_vips):
 
 def add_br_access_port(bridge_name, vlan_id, far_side_device, far_side_int):
     """ Adds access port to a device acting as L2 switch, and link between it and attached device """
-
     bridge_dev = devices[bridge_name]
-    # Use basic eth0, eth1 int naming for these
-    if "phys_ints" in bridge_dev:
-        eth_ints = [eth_int for eth_int in bridge_dev['phys_ints'].keys() if eth_int.startswith('eth')]
-        int_name = f"eth{len(eth_ints) + 1}"
-    else:
-        int_name = "eth1"
-
+    int_name = get_next_eth_int(bridge_dev)
+    
     bridge_dev['phys_ints'][int_name] = {
         'addrs': [],
         'clab_dev': int_name,
@@ -607,6 +663,174 @@ def add_br_access_port(bridge_name, vlan_id, far_side_device, far_side_int):
     }
 
     add_link(bridge_name, int_name, far_side_device, far_side_int)
+
+
+def get_next_eth_int(device_data):
+    """ Returns name for next eth interface on a device """
+    eth_ints = [eth_int for eth_int in device_data['phys_ints'].keys() if eth_int.startswith('eth')]
+    return f"eth{len(eth_ints) + 1}"
+
+
+def write_isp_rtr_config():
+    ''' Write JunOS config in JSON format to file which will be loaded to isp_router node '''
+
+    print("Writing isp_router_conf.json...")
+    rtr_conf = {
+        'policy-options': {
+            'policy-statement': [],
+            'prefix-list': []
+        },
+        'routing-options': {
+            'rib': [{
+                'name': 'inet6.0',
+                'static': {
+                    'route': [{
+                        'name': '2000::/3',
+                        'next-hop' : ['2001:172:20:20::1']
+            }]}}],
+            'static': {
+                'route': [{
+                    'name': '0.0.0.0/1',
+                    'next-hop': ['172.20.20.1']
+                },
+                {
+                    'name': '128.0.0.0/1',
+                    'next-hop': ['172.20.20.1']
+        }]}},
+        'protocols': {
+            'bgp': {
+                'group': []
+    }}}
+
+    # Add IPv4 static routes for ranges we want to announce
+    for v4_routes in dummy_routes['4'].values():
+        for v4_route in v4_routes:
+            route_conf = {
+                'name': v4_route,
+                'next-hop': ['172.20.20.1']
+            }
+            rtr_conf['routing-options']['static']['route'].append(route_conf)
+
+    # Add IPv6 static routes
+    for v6_routes in dummy_routes['6'].values():
+        for v6_route in v6_routes:
+            route_conf = {
+                'name': v6_route,
+                'next-hop' : ['2001:172:20:20::1']
+            }
+            rtr_conf['routing-options']['rib'][0]['static']['route'].append(route_conf)
+
+    # Add prefix-lists for routes we'll use same dummy as-path
+    for ip_version, path_groups in dummy_routes.items():
+        for as_path, networks in path_groups.items():
+            pfx_list_conf = {
+                'name': f'PFX_V{ip_version}_{as_path.replace(" ", "_")}',
+                'prefix-list-item': []
+            }
+            for network in networks:
+                pfx_list_conf['prefix-list-item'].append({
+                    'name': network
+                })
+            rtr_conf['policy-options']['prefix-list'].append(pfx_list_conf)
+
+    # Add policy-statements to add as-path prepends
+    for local_as, group_vars in devices['isp_router']['bgp_groups'].items():
+        policy = {}
+        for ip_version in ['4', '6']:
+            policy[ip_version] = {
+                'name': f"{group_vars['provider'].upper()}-OUT{ip_version}",
+                'term': []
+            }
+
+            # Allow 0.0.0.0/1 and 128.0.0.0/1 if it's a v4 policy
+            if ip_version == '4':
+                for index, network in enumerate(['0.0.0.0/1', '128.0.0.0/1']):
+                    term = {
+                        'name': f"HALF{index + 1}",
+                        'from': {
+                            'protocol': ["static"],
+                            'route-filter': [{
+                                'address': network,
+                                'exact': [None]
+                            }]
+                        },
+                        'then': {
+                            'accept': [None]
+                        }
+                    }
+                    # Alternate pre-pend on each of the routes
+                    if (local_as + index) % 2 == 0:
+                        term['then']['as-path-prepend'] = f"{local_as} {local_as}"
+                    policy[ip_version]['term'].append(term)
+            else:
+                # V6 - add term to announce global unicast range
+                policy[ip_version]['term'].append({
+                    'name': "GLOBAL_UNICAST",
+                    'from': {
+                        'protocol': ["static"],
+                        'route-filter': [{
+                            'address': '2000::/3',
+                            'exact': [None]
+                        }]
+                    },
+                    'then': {
+                        'accept': [None]
+                    }
+                })
+
+            # Add term for every different AS-path we'll prepend
+            for as_path, networks in dummy_routes[ip_version].items():
+                valid_asns = []
+                # Pre-pend once or twice randomly:
+                prepends = hash(as_path + str(local_as)) % 3
+                # But more often don't
+                if prepends > 0:
+                    preprends = prepends - (hash(as_path + str(local_as)) % 2)
+                valid_asns = [str(local_as)] * prepends
+                # Add remaining ASNs to path - do not add our own if present
+                asns = as_path.split()
+                for asn in asns:
+                    if asn != str(local_as):
+                        valid_asns.append(asn)
+                policy_term = {
+                    'name': f'PATH_{"_".join(valid_asns)}',
+                    'from': {
+                        "protocol": ["static"],
+                        "prefix-list": [{
+                            "name": f'PFX_V{ip_version}_{as_path.replace(" ", "_")}'
+                        }]
+                    },
+                    'then': {
+                        'as-path-expand': {
+                            "aspath": f'{" ".join(valid_asns)}'
+                        },
+                        'accept': [None]
+                    }
+                }
+                policy[ip_version]['term'].append(policy_term)
+            rtr_conf['policy-options']['policy-statement'].append(policy[ip_version])
+            
+            # Create BGP group
+            bgp_group = {
+                "name": f"{group_vars['provider'].upper()}{ip_version}",
+                "export": [f"{group_vars['provider'].upper()}-OUT{ip_version}"],
+                "peer-as": "14907",
+                "local-as": {
+                    "as-number": str(local_as),
+                    "private": [None],
+                    "no-prepend-global-as": [None]
+                },
+                "neighbor": []
+            }
+            for wmf_peer in group_vars['wmf_peers']:
+                if str(ipaddress.ip_address(wmf_peer).version) == ip_version:
+                    bgp_group['neighbor'].append({'name': wmf_peer})
+            rtr_conf['protocols']['bgp']['group'].append(bgp_group)
+
+
+    # Write config to file
+    with open('output/isp_router_conf.json', 'w') as out_file:
+        out_file.write(json.dumps(rtr_conf))    
 
 
 if __name__=="__main__":

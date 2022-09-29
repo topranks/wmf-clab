@@ -18,8 +18,6 @@ import warnings
 warnings.filterwarnings(action='ignore',module='.*paramiko.*')
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-n', '--netbox', help='Netbox server IP / Hostname', type=str, default="netbox.wikimedia.org")
-parser.add_argument('-k', '--key', help='Netbox API Token / Key', type=str, default='')
 parser.add_argument('-s', '--sshconfig', help='SSH config file', default='~/.ssh/config')
 args = parser.parse_args()
 

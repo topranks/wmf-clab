@@ -18,9 +18,9 @@ def main():
             if "clab-wmf-lab-" in line:
                 device = line.split()[-1].replace('clab-wmf-lab-', '')
                 if device in fqdn_map:
-                    new_file.write(f"{line_strip}\t{fqdn_map[device]}\n")
+                    new_file.write(f"{line_strip}\t{fqdn_map[device]}\t{device}\n")
                 else:
-                    new_file.write(line)
+                    new_file.write(f"{line_strip}\t{device}\n")
             else:
                 new_file.write(line)
 
