@@ -69,7 +69,7 @@ Router sub-interfaces connecting to switches are also created by the start scrip
 
 The lab should run on any Linux system with Python3 and docker.  I typically it in a Debian VM, to keep everything isolated.  It is not advised to run directly on a device with direct production router access, to avoid accidentially connecting to a real device thinking it's a lab node.
 
-It should be run on a system with minimum 8GB RAM, and preferably 10GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs are reccomended but it should work with 2 or less.
+It should be run on a system with minimum 10GB RAM, and preferably 12GB+, to allow the more than 50 virtual nodes run comfortably.  4 vCPUs are reccomended but it should work with 2 or less.
 
 The clab binary and start script need to be run as root to create containers and network devices.  When running in a VM I tend to do all operations from a root shell to make it simple.
 
