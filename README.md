@@ -20,7 +20,7 @@ This means that, while the OSPF, BGP and other protocol implemenations should op
 
 At a high level the approach to building the lab is as follows:
 
-1. Run ```gen_topo.py```, which performs these steps to generates the required files:
+1. Run ```gen_topo.py```, which performs these steps to generate the required files:
     1. Connect to WMF Netbox and discover all core routers, links and circuits between them.
     2. Generate a YAML containerlab topology file based on the discovered topology
     3. Write a startup bash script which will:
@@ -47,7 +47,7 @@ At a high level the approach to building the lab is as follows:
 
 ### Interface Addressing
 
-Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For many of the containerized platforms it supports this is not an issue - most allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd, however.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to enable OSPF, BGP etc. which will run over those interfaces.
+Containerlab supports crpd natively, however it provides no mechanism to configure IP addresses on the veth interfaces that exist within each containerized node.  For many of the containerized platforms it supports this is not an issue - most allow configuration of interface addresses through their CLI, Netconf etc.  That is not true with crpd.  Instead crpd expects to run on a Linux host / container with all interface IPs already configured, and allows you to enable OSPF, BGP etc. which will run over those interfaces.
 
 To overcome this the "start" shell script uses the Linux [ip](https://manpages.debian.org/bullseye/iproute2/ip-route.8.en.html) command to add interface IPs to containers after they have been initialized.
 
