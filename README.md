@@ -35,7 +35,6 @@ At a high level the approach to building the lab is as follows:
         3. Replace certain top-level Jinja2 templates (such as 'cr.conf') with versions which only include config sections cRPD supports.
 2. Gather additional data not available in Netbox/Homer repo
     1. Run the ```junos_get_live_conf.py``` script on a device which has access to production routers, and transfer the JSON files it saves to the 'wmf-lab' directory on the machine running the lab.
-    2. Save LVS service IPs using the script/instructions in the ```lvs_getvips``` directory of this repo
 3. Initialise the lab by running ```start_wmf-lab.sh``` from the 'output' directory
     * This initialises the lab and performs the actions described above in 1.3 
 5. Run homer against the newly-created container devices to apply Juniper configuration
