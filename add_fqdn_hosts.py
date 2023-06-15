@@ -15,8 +15,8 @@ def main():
     with open('/etc/hosts', 'r') as hostsfile:
         for line in hostsfile.readlines():
             line_strip = line.rstrip('\n')
-            if "clab-wmf-lab-" in line:
-                device = line.split()[-1].replace('clab-wmf-lab-', '')
+            if "clab-wmf-clab-" in line:
+                device = line.split()[-1].replace('clab-wmf-clab-', '')
                 if device in fqdn_map:
                     new_file.write(f"{line_strip}\t{fqdn_map[device]}\t{device}\n")
                 else:
