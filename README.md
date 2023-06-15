@@ -20,7 +20,7 @@ This means that, while the OSPF, BGP and other protocol implemenations should op
 
 At a high level the approach to building the lab is as follows:
 
-1. Run ```gen_topo.py```, which performs these steps to generate the required files:
+1. Run ```clab_gen.py```, which performs these steps to generate the required files:
     1. Connect to WMF Netbox and discover all core routers, links and circuits between them.
     2. Generate a YAML containerlab topology file based on the discovered topology
     3. Write a startup bash script which will:
@@ -147,9 +147,9 @@ Clone this repo as follows:
 ```
 git clone --depth 1 https://github.com/topranks/wmf-lab.git
 ```
-You can then change to the 'wmf-lab' directory and run the "gen_topo.py" script, it will ask for an API key to connect to the WMF Netbox server and begin building the topology.  If you have a license file for crpd the path should be provided with the '-l' option.  The lab will run without a license file, but BGP adjacencies will not come up as that is a licensed feature, so it's limited use without.
+You can then change to the 'wmf-lab' directory and run the "clab_gen.py" script, it will ask for an API key to connect to the WMF Netbox server and begin building the topology.  If you have a license file for crpd the path should be provided with the '-l' option.  The lab will run without a license file, but BGP adjacencies will not come up as that is a licensed feature, so it's limited use without.
 ```
-cmooney@wikilap:~/wmf-lab$ ./gen_topo.py -l ~/wmf-lab/crpd.lic
+cmooney@wikilap:~/wmf-lab$ ./clab_gen.py -l ~/wmf-lab/crpd.lic
 Netbox API Key: 
 Addding cr1-codfw...
 Addding cr1-drmrs...
